@@ -16,6 +16,7 @@
   .row { display:flex; align-items:center; gap:12px; background:var(--card); border-radius:12px; padding:12px; margin-bottom:8px; user-select:none; }
   .box { flex:0 0 28px; height:28px; border-radius:8px; border:2px solid var(--line); background:var(--bg); display:flex; align-items:center; justify-content:center; font-size:18px; }
   .row.on .box { background:var(--ok); border-color:var(--ok); color:#fff; }
+  .row.seen { margin-top:16px; background:transparent; border:2px dashed var(--line); }
   .w { font-weight:600; }
   .t { color:var(--hint); font-weight:400; }
   .s { font-size:12px; color:var(--hint); margin-top:2px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
@@ -69,6 +70,7 @@
   }
   document.getElementById('title').textContent = data.n || 'Минус-слова';
   // i: [слово, перевод, показы, пример, tier(c|s), checked]
+  var seen = false;  // «остальные — нормальные»: неотмеченное больше не приходит тем же списком
   var items = data.i.map(function (x) { return { w: x[0], t: x[1], s: x[2], q: x[3], tier: x[4], on: !!x[5] }; });
 
   function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
@@ -90,14 +92,24 @@
       });
     });
     var n = items.filter(function (i) { return i.on; }).length;
-    apply.textContent = n ? 'Применить (' + n + ')' : 'Ничего не отмечено';
-    apply.disabled = !n;
+    if (n < items.length) {
+      // В конце списка: дошла сюда — значит, всё просмотрела
+      var d = document.createElement('div');
+      d.className = 'row seen' + (seen ? ' on' : '');
+      d.innerHTML = '<div class="box">' + (seen ? '✓' : '') + '</div>' +
+        '<div style="min-width:0;flex:1"><div class="w">Остальные — нормальные</div>' +
+        '<div class="s">больше не показывать, пока показы не вырастут вдвое</div></div>';
+      d.onclick = function () { seen = !seen; if (tg && tg.HapticFeedback) tg.HapticFeedback.selectionChanged(); render(); };
+      list.appendChild(d);
+    }
+    apply.textContent = n ? 'Применить (' + n + ')' : (seen ? 'Сохранить' : 'Ничего не отмечено');
+    apply.disabled = !n && !seen;
   }
   render();
 
   apply.onclick = function () {
     var checked = items.map(function (it, i) { return it.on ? i : -1; }).filter(function (i) { return i >= 0; });
-    var payload = JSON.stringify({ b: data.b, checked: checked });
+    var payload = JSON.stringify({ b: data.b, checked: checked, seen: seen && checked.length < items.length });
     if (tg && tg.sendData) tg.sendData(payload); else alert(payload);
   };
   document.getElementById('cancel').onclick = function () {
