@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta http-equiv="cache-control" content="no-cache">
+<title>Минус-слова</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+  :root { --bg:#fff; --fg:#111; --hint:#777; --card:#f4f5f7; --line:#e3e5e8; --btn:#2481cc; --btnfg:#fff; --ok:#2e9e5b; }
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  body { margin:0; font:16px/1.35 -apple-system,"Segoe UI",Roboto,sans-serif; background:var(--bg); color:var(--fg); padding:12px 12px 96px; }
+  h1 { font-size:18px; margin:4px 0 2px; }
+  .sub { color:var(--hint); font-size:13px; margin:0 0 12px; }
+  h2 { font-size:13px; text-transform:uppercase; letter-spacing:.04em; color:var(--hint); margin:16px 0 6px; }
+  .row { display:flex; align-items:center; gap:12px; background:var(--card); border-radius:12px; padding:12px; margin-bottom:8px; user-select:none; }
+  .box { flex:0 0 28px; height:28px; border-radius:8px; border:2px solid var(--line); background:var(--bg); display:flex; align-items:center; justify-content:center; font-size:18px; }
+  .row.on .box { background:var(--ok); border-color:var(--ok); color:#fff; }
+  .w { font-weight:600; }
+  .t { color:var(--hint); font-weight:400; }
+  .s { font-size:12px; color:var(--hint); margin-top:2px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .empty { color:var(--hint); padding:40px 0; text-align:center; }
+  #bar { position:fixed; left:0; right:0; bottom:0; padding:10px 12px calc(10px + env(safe-area-inset-bottom,0px)); background:var(--bg); border-top:1px solid var(--line); display:flex; gap:8px; }
+  button { flex:1; border:0; border-radius:12px; padding:14px; font-size:16px; font-weight:600; }
+  #apply { background:var(--btn); color:var(--btnfg); }
+  #cancel { background:var(--card); color:var(--fg); flex:0 0 38%; }
+  button:disabled { opacity:.45; }
+</style>
+</head>
+<body>
+<h1 id="title">Минус-слова</h1>
+<p class="sub">Отметь, что убрать из показов. Отмеченное уйдёт в кабинет после «Применить».</p>
+<div id="list"></div>
+<div id="bar">
+  <button id="cancel">Отмена</button>
+  <button id="apply">Применить</button>
+</div>
+<script>
+(function () {
+  var tg = window.Telegram && Telegram.WebApp;
+  if (tg) { tg.ready(); tg.expand(); }
+  function theme() {
+    if (!tg || !tg.themeParams) return;
+    var p = tg.themeParams, r = document.documentElement.style;
+    if (p.bg_color) r.setProperty('--bg', p.bg_color);
+    if (p.text_color) r.setProperty('--fg', p.text_color);
+    if (p.hint_color) r.setProperty('--hint', p.hint_color);
+    if (p.secondary_bg_color) r.setProperty('--card', p.secondary_bg_color);
+    if (p.button_color) r.setProperty('--btn', p.button_color);
+    if (p.button_text_color) r.setProperty('--btnfg', p.button_text_color);
+  }
+  theme();
+  if (tg) tg.onEvent('themeChanged', theme);
+
+  // Пачка приходит в ссылке: #<base64url(JSON)>. На хостинге ничего не лежит.
+  var data = null;
+  try {
+    var raw = location.hash.slice(1).replace(/-/g, '+').replace(/_/g, '/');
+    data = JSON.parse(decodeURIComponent(escape(atob(raw))));
+  } catch (e) { data = null; }
+
+  var list = document.getElementById('list');
+  var apply = document.getElementById('apply');
+  if (!data || !data.i || !data.i.length) {
+    list.innerHTML = '<div class="empty">Список не загрузился. Закрой и открой заново из сообщения бота.</div>';
+    apply.disabled = true;
+    return;
+  }
+  document.getElementById('title').textContent = data.n || 'Минус-слова';
+  // i: [слово, перевод, показы, пример, tier(c|s), checked]
+  var items = data.i.map(function (x) { return { w: x[0], t: x[1], s: x[2], q: x[3], tier: x[4], on: !!x[5] }; });
+
+  function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  function render() {
+    list.innerHTML = '';
+    [['c', 'Уверен — сними лишнее'], ['s', 'Сомневаюсь — отметь нужное']].forEach(function (g) {
+      var rows = items.map(function (it, i) { return [it, i]; }).filter(function (p) { return p[0].tier === g[0]; });
+      if (!rows.length) return;
+      var h = document.createElement('h2'); h.textContent = g[1]; list.appendChild(h);
+      rows.forEach(function (p) {
+        var it = p[0];
+        var d = document.createElement('div');
+        d.className = 'row' + (it.on ? ' on' : '');
+        d.innerHTML = '<div class="box">' + (it.on ? '✓' : '') + '</div>' +
+          '<div style="min-width:0;flex:1"><div class="w">' + esc(it.w) + ' <span class="t">— ' + esc(it.t || '?') + '</span></div>' +
+          '<div class="s">' + it.s + ' пок.' + (it.q ? ' · «' + esc(it.q) + '»' : '') + '</div></div>';
+        d.onclick = function () { it.on = !it.on; if (tg && tg.HapticFeedback) tg.HapticFeedback.selectionChanged(); render(); };
+        list.appendChild(d);
+      });
+    });
+    var n = items.filter(function (i) { return i.on; }).length;
+    apply.textContent = n ? 'Применить (' + n + ')' : 'Ничего не отмечено';
+    apply.disabled = !n;
+  }
+  render();
+
+  apply.onclick = function () {
+    var checked = items.map(function (it, i) { return it.on ? i : -1; }).filter(function (i) { return i >= 0; });
+    var payload = JSON.stringify({ b: data.b, checked: checked });
+    if (tg && tg.sendData) tg.sendData(payload); else alert(payload);
+  };
+  document.getElementById('cancel').onclick = function () {
+    if (tg && tg.sendData) tg.sendData(JSON.stringify({ b: data.b, cancel: true })); else if (tg) tg.close();
+  };
+})();
+</script>
+</body>
+</html>
