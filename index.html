@@ -41,6 +41,10 @@
   .v-z { border-left-color:#d9a400; } .v-z .chip { background:#d9a400; }
   .v-r, .v-n { border-left-color:#8a8f98; } .v-r .chip, .v-n .chip { background:#8a8f98; }
   .v-h { border-left-color:var(--ok); } .v-h .chip { background:var(--ok); }
+  .card.waste { border-left-color:#d64545; }
+  .card .badge { display:inline-block; font-size:11px; font-weight:700; color:#d64545; border:1px solid #d64545; border-radius:6px; padding:1px 6px; margin-top:4px; }
+  .card.grow { border-left-color:var(--ok); }
+  .card.grow .do { color:var(--ok); }
   #pause { background:#d64545; color:#fff; }
   .camp { display:flex; align-items:center; gap:10px; background:var(--card); border-radius:12px; padding:13px 12px; margin-bottom:8px; border-left:5px solid var(--line); user-select:none; }
   .camp .body { flex:1; min-width:0; }
@@ -113,14 +117,14 @@
     return Promise.resolve(d ? [JSON.parse(new TextDecoder().decode(bytes(d)))] : null);
   }
 
-  var all = [], data = null, items = [], cards = [], tab = 'w', seen = false;
+  var all = [], data = null, items = [], cards = [], grow = [], tab = 'w', seen = false;
   var VERD = { e: 'Дорого', z: 'Без заказов', r: 'Рано судить', n: 'Нет маржи', h: 'Держать' };
 
-  // 3 — ДРР кампании выше предела, 2 — есть «дорого», 1 — есть слова, 0 — спокойно
+  // 3 — ДРР кампании выше предела, 2 — есть «дорого» или «сливает» (w=1), 1 — есть слова, 0 — спокойно
   function sev(c) {
     var hd = c.hd || [];
     if (hd[2] != null && hd[3] != null && hd[2] > hd[3]) return 3;
-    if ((c.k || []).some(function (x) { return x[4] === 'e'; })) return 2;
+    if ((c.k || []).some(function (x) { return x[4] === 'e' || x[6]; })) return 2;
     return (c.i || []).length ? 1 : 0;
   }
 
@@ -137,7 +141,9 @@
       .forEach(function (p) {
         var c = p[0], s = sev(c), hd = c.hd || [], w = (c.i || []).length;
         var bad = (c.k || []).filter(function (x) { return x[4] === 'e'; }).length;
-        var chip = s === 3 ? 'ДРР ' + hd[2] + '%' : s === 2 ? 'Дорого' + (bad > 1 ? ' · ' + bad : '') : s === 1 ? 'Слова · ' + w : 'Спокойно';
+        var waste = (c.k || []).filter(function (x) { return x[6]; }).length;
+        var lbl2 = bad ? 'Дорого' + (bad > 1 ? ' · ' + bad : '') : 'Сливает' + (waste > 1 ? ' · ' + waste : '');
+        var chip = s === 3 ? 'ДРР ' + hd[2] + '%' : s === 2 ? lbl2 : s === 1 ? 'Слова · ' + w : 'Спокойно';
         var nums = hd.length ? num(hd[0]) + ' сум · ' + hd[1] + ' зак' +
           (hd[2] != null && s !== 3 ? ' · ДРР ' + hd[2] + '%' : '') + (s === 3 ? ' · предел ' + hd[3] + '%' : '') : '';
         if (w && s !== 1) nums += (nums ? ' · ' : '') + 'слов: ' + w;
@@ -156,6 +162,7 @@
     // i: [слово, перевод, показы, пример, tier(c|s), checked]
     items = (data.i || []).map(function (x) { return { w: x[0], t: x[1], s: x[2], q: x[3], tier: x[4], on: !!x[5] }; });
     cards = data.k || [];
+    grow = data.g || [];
     tab = items.length ? 'w' : 'r'; seen = false;
     $('title').textContent = data.n || 'Минус-слова';
     show('bar', true);
@@ -165,7 +172,8 @@
     render(); window.scrollTo(0, 0);
   }
 
-  // ---- вкладка «Рекомендации»: k = [ключ, расход, заказы, цена заказа, вердикт, порог ставки]
+  // ---- вкладка «Рекомендации»: k = [ключ, расход, заказы, цена заказа, вердикт, порог ставки, сливает?]
+  // g = [запрос, заказы, клики] — свои подсказки, никаких кнопок действия
   function renderCards() {
     list.innerHTML = '';
     var hd = data.hd;
@@ -175,20 +183,32 @@
         (hd[2] != null ? ' · ДРР <b' + (hd[3] != null && hd[2] > hd[3] ? ' style="color:#d64545"' : '') + '>' + hd[2] + '%</b>' + (hd[3] != null ? ' при пределе ' + hd[3] + '%' : '') : '');
       list.appendChild(h);
     }
-    // «Дорого» сверху, дальше строго по деньгам: у Подушки кластер «рано судить» на половину
-    // бюджета тонул под десятью мелкими «без заказов» (тест 18.09)
-    cards.slice().sort(function (a, b) { return (a[4] === 'e' ? 0 : 1) - (b[4] === 'e' ? 0 : 1) || b[1] - a[1]; })
+    // «Дорого» и «сливает» сверху, дальше строго по деньгам: у Подушки кластер «рано судить» на
+    // половину бюджета тонул под десятью мелкими «без заказов» (тест 18.09)
+    cards.slice().sort(function (a, b) { return ((a[4] === 'e' || a[6]) ? 0 : 1) - ((b[4] === 'e' || b[6]) ? 0 : 1) || b[1] - a[1]; })
       .forEach(function (c) {
-        var v = VERD[c[4]] ? c[4] : 'n', d = document.createElement('div');
-        d.className = 'card v-' + v;
+        var v = VERD[c[4]] ? c[4] : 'n', waste = !!c[6], d = document.createElement('div');
+        d.className = 'card v-' + v + (waste ? ' waste' : '');
         var nums = num(c[1]) + ' сум · ' + c[2] + ' зак' +
           (c[2] ? ' · ' + num(c[3]) + ' за заказ' + (data.m ? ', маржа ' + num(data.m) : '') : '');
         var todo = v === 'e' ? (c[5] ? 'Снизь ставку до ~' + num(c[5]) : 'Заказ дороже маржи — снизь ставку') : '';
         d.innerHTML = '<div class="top"><div class="k">' + esc(c[0]) + '</div><div class="chip">' + VERD[v] + '</div></div>' +
-          '<div class="n">' + nums + '</div>' + (todo ? '<div class="do">' + todo + '</div>' : '');
+          (waste ? '<div class="badge">Сливает</div>' : '') +
+          '<div class="n">' + nums + '</div>' +
+          (waste ? '<div class="do">' + num(c[1]) + ' сум без заказов — снизь ставку или выключи ключ в кабинете</div>' : '') +
+          (todo ? '<div class="do">' + todo + '</div>' : '');
         list.appendChild(d);
       });
     if (data.kr) { var m = document.createElement('div'); m.className = 'empty'; m.textContent = 'и ещё ' + data.kr + ' мелких кластеров'; list.appendChild(m); }
+    if (grow.length) {
+      var gh = document.createElement('h2'); gh.textContent = 'Растить'; list.appendChild(gh);
+      grow.forEach(function (g) {
+        var d = document.createElement('div'); d.className = 'card grow';
+        d.innerHTML = '<div class="top"><div class="k">' + esc(g[0]) + '</div></div>' +
+          '<div class="do">' + g[1] + ' зак без рекламы — добавь ключом</div>';
+        list.appendChild(d);
+      });
+    }
   }
 
   function render() {
