@@ -52,10 +52,11 @@
   theme();
   if (tg) tg.onEvent('themeChanged', theme);
 
-  // Пачка приходит в ссылке: #<base64url(JSON)>. На хостинге ничего не лежит.
+  // Пачка приходит в ссылке: ?d=<base64url(JSON)>. Не в #: Telegram подменяет
+  // фрагмент своим #tgWebAppData=… и пачка терялась («список не загрузился»).
   var data = null;
   try {
-    var raw = location.hash.slice(1).replace(/-/g, '+').replace(/_/g, '/');
+    var raw = (new URLSearchParams(location.search).get('d') || '').replace(/-/g, '+').replace(/_/g, '/');
     data = JSON.parse(decodeURIComponent(escape(atob(raw))));
   } catch (e) { data = null; }
 
