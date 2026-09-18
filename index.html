@@ -30,6 +30,11 @@
   #tabs div { flex:1; text-align:center; padding:9px 4px; border-radius:9px; font-weight:600; font-size:14px; color:var(--hint); }
   #tabs div.on { background:var(--bg); color:var(--fg); }
   .head { font-size:14px; margin:0 0 12px; }
+  .todo { background:var(--card); border-radius:12px; padding:12px 14px; margin:0 0 14px; }
+  .todo h3 { margin:0 0 6px; font-size:13px; text-transform:uppercase; letter-spacing:.04em; color:var(--hint); }
+  .todo div { font-size:15px; font-weight:600; padding:5px 0; overflow-wrap:anywhere; }
+  .todo div + div { border-top:1px solid var(--line); }
+  .todo .ok { color:var(--ok); } .todo .bad { color:#d64545; }
   .head b { font-size:17px; }
   .card { background:var(--card); border-radius:12px; padding:12px; margin-bottom:8px; border-left:5px solid var(--line); }
   .card .top { display:flex; justify-content:space-between; align-items:flex-start; gap:8px; }
@@ -167,7 +172,8 @@
     $('title').textContent = data.n || 'Минус-слова';
     show('bar', true);
     if (all.length > 1) {
-      if (tg && tg.BackButton && tg.BackButton.show) tg.BackButton.show(); else show('back', true);
+      if (tg && tg.BackButton && tg.BackButton.show) tg.BackButton.show();
+      else $('back').style.display = 'block';   // show() тут не годится: в CSS у #back display:none
     }
     render(); window.scrollTo(0, 0);
   }
@@ -183,6 +189,23 @@
         (hd[2] != null ? ' · ДРР <b' + (hd[3] != null && hd[2] > hd[3] ? ' style="color:#d64545"' : '') + '>' + hd[2] + '%</b>' + (hd[3] != null ? ' при пределе ' + hd[3] + '%' : '') : '');
       list.appendChild(h);
     }
+    // «Что сделать»: максимум три строки, по убыванию денег — ответ одним взглядом, без
+    // чтения карточек (Николай, 18.09: «не словесным поносом»). Всё считается из того же payload.
+    var acts = [];
+    if (hd && hd[2] != null && hd[3] != null && hd[2] > hd[3])
+      acts.push([1e12, 'bad', 'Кампания в минус: ДРР ' + hd[2] + '% при пределе ' + hd[3] + '%']);
+    cards.forEach(function (c) {
+      if (c[4] === 'e') acts.push([c[1], 'bad', 'Снизь ставку «' + esc(c[0]) + '»' + (c[5] ? ' до ~' + num(c[5]) : '')]);
+      else if (c[6]) acts.push([c[1], 'bad', 'Срежь или выключи «' + esc(c[0]) + '» — ' + num(c[1]) + ' сум без заказов']);
+    });
+    (data.g || []).forEach(function (g) { acts.push([0, 'ok', 'Выдели ключом «' + esc(g[0]) + '» — ' + g[1] + ' зак']); });
+    acts.sort(function (a, b) { return b[0] - a[0]; });
+    var t = document.createElement('div'); t.className = 'todo';
+    t.innerHTML = '<h3>Что сделать</h3>' + (acts.length
+      ? acts.slice(0, 3).map(function (a) { return '<div class="' + a[1] + '">' + a[2] + '</div>'; }).join('') +
+        (acts.length > 3 ? '<div style="color:var(--hint);font-weight:400">и ещё ' + (acts.length - 3) + ' — в карточках ниже</div>' : '')
+      : '<div class="ok">Ничего — кампания в норме</div>');
+    list.appendChild(t);
     // «Дорого» и «сливает» сверху, дальше строго по деньгам: у Подушки кластер «рано судить» на
     // половину бюджета тонул под десятью мелкими «без заказов» (тест 18.09)
     cards.slice().sort(function (a, b) { return ((a[4] === 'e' || a[6]) ? 0 : 1) - ((b[4] === 'e' || b[6]) ? 0 : 1) || b[1] - a[1]; })
