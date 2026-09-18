@@ -26,15 +26,35 @@
   #apply { background:var(--btn); color:var(--btnfg); }
   #cancel { background:var(--card); color:var(--fg); flex:0 0 38%; }
   button:disabled { opacity:.45; }
+  #tabs { display:none; gap:4px; background:var(--card); border-radius:12px; padding:4px; margin:8px 0 12px; }
+  #tabs div { flex:1; text-align:center; padding:9px 4px; border-radius:9px; font-weight:600; font-size:14px; color:var(--hint); }
+  #tabs div.on { background:var(--bg); color:var(--fg); }
+  .head { font-size:14px; margin:0 0 12px; }
+  .head b { font-size:17px; }
+  .card { background:var(--card); border-radius:12px; padding:12px; margin-bottom:8px; border-left:5px solid var(--line); }
+  .card .top { display:flex; justify-content:space-between; align-items:flex-start; gap:8px; }
+  .card .k { font-weight:600; min-width:0; overflow-wrap:anywhere; }
+  .chip { flex:0 0 auto; font-size:12px; font-weight:700; padding:3px 9px; border-radius:999px; color:#fff; white-space:nowrap; }
+  .card .n { font-size:13px; color:var(--hint); margin-top:4px; }
+  .card .do { font-size:14px; font-weight:600; margin-top:6px; }
+  .v-e { border-left-color:#d64545; } .v-e .chip { background:#d64545; } .v-e .do { color:#d64545; }
+  .v-z { border-left-color:#d9a400; } .v-z .chip { background:#d9a400; }
+  .v-r, .v-n { border-left-color:#8a8f98; } .v-r .chip, .v-n .chip { background:#8a8f98; }
+  .v-h { border-left-color:var(--ok); } .v-h .chip { background:var(--ok); }
+  #pause { background:#d64545; color:#fff; }
+  #zs { background:var(--card); color:var(--fg); }
 </style>
 </head>
 <body>
 <h1 id="title">Минус-слова</h1>
-<p class="sub">Отметь, что убрать из показов. Отмеченное уйдёт в кабинет после «Применить».</p>
+<div id="tabs"><div data-t="w">Слова</div><div data-t="r">Рекомендации</div></div>
+<p class="sub" id="sub">Отметь, что убрать из показов. Отмеченное уйдёт в кабинет после «Применить».</p>
 <div id="list"></div>
 <div id="bar">
   <button id="cancel">Отмена</button>
   <button id="apply">Применить</button>
+  <button id="zs" style="display:none">Что советует ZoomSelling</button>
+  <button id="pause" style="display:none">⏸ Пауза</button>
 </div>
 <script>
 (function () {
@@ -63,7 +83,8 @@
 
   var list = document.getElementById('list');
   var apply = document.getElementById('apply');
-  if (!data || !data.i || !data.i.length) {
+  var cards = (data && data.k) || [];
+  if (!data || !((data.i && data.i.length) || cards.length)) {
     list.innerHTML = '<div class="empty">Список не загрузился. Закрой и открой заново из сообщения бота.</div>';
     apply.disabled = true;
     return;
@@ -71,10 +92,49 @@
   document.getElementById('title').textContent = data.n || 'Минус-слова';
   // i: [слово, перевод, показы, пример, tier(c|s), checked]
   var seen = false;  // «остальные — нормальные»: неотмеченное больше не приходит тем же списком
-  var items = data.i.map(function (x) { return { w: x[0], t: x[1], s: x[2], q: x[3], tier: x[4], on: !!x[5] }; });
+  var items = (data.i || []).map(function (x) { return { w: x[0], t: x[1], s: x[2], q: x[3], tier: x[4], on: !!x[5] }; });
 
   function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  // ---- вкладка «Рекомендации»: k = [ключ, расход, заказы, цена заказа, вердикт, порог ставки]
+  var tab = items.length ? 'w' : 'r';
+  var VERD = { e: ['Дорого', 0], z: ['Без заказов', 1], r: ['Рано судить', 2], n: ['Нет маржи', 3], h: ['Держать', 4] };
+  function num(x) { return String(Math.round(x)).replace(/\B(?=(\d{3})+(?!\d))/g, '\u00a0'); }
+  function show(id, on) { document.getElementById(id).style.display = on ? '' : 'none'; }
+  function renderCards() {
+    list.innerHTML = '';
+    var hd = data.hd;
+    if (hd) {
+      var h = document.createElement('p'); h.className = 'head';
+      h.innerHTML = 'Расход <b>' + num(hd[0]) + '</b> сум · ' + hd[1] + ' зак' +
+        (hd[2] != null ? ' · ДРР <b>' + hd[2] + '%</b>' + (hd[3] != null ? ' при пределе ' + hd[3] + '%' : '') : '');
+      list.appendChild(h);
+    }
+    cards.slice().sort(function (a, b) { return (VERD[a[4]] || VERD.n)[1] - (VERD[b[4]] || VERD.n)[1] || b[1] - a[1]; })
+      .forEach(function (c) {
+        var v = VERD[c[4]] ? c[4] : 'n', d = document.createElement('div');
+        d.className = 'card v-' + v;
+        var nums = num(c[1]) + ' сум · ' + c[2] + ' зак' +
+          (c[2] ? ' · ' + num(c[3]) + ' за заказ' + (data.m ? ', маржа ' + num(data.m) : '') : '');
+        var todo = v === 'e' ? (c[5] ? 'Снизь ставку до ~' + num(c[5]) : 'Заказ дороже маржи — снизь ставку') : '';
+        d.innerHTML = '<div class="top"><div class="k">' + esc(c[0]) + '</div><div class="chip">' + VERD[v][0] + '</div></div>' +
+          '<div class="n">' + nums + '</div>' + (todo ? '<div class="do">' + todo + '</div>' : '');
+        list.appendChild(d);
+      });
+    if (data.kr) { var m = document.createElement('div'); m.className = 'empty'; m.textContent = 'и ещё ' + data.kr + ' мелких кластеров'; list.appendChild(m); }
+  }
   function render() {
+    if (cards.length) {
+      document.getElementById('tabs').style.display = items.length ? 'flex' : 'none';
+      [].forEach.call(document.querySelectorAll('#tabs div'), function (t) { t.className = t.getAttribute('data-t') === tab ? 'on' : ''; });
+    }
+    var rec = tab === 'r';
+    show('sub', !rec); show('cancel', !rec); show('apply', !rec);
+    // Пауза глушит ВСЮ кампанию, включая кластеры, которые продают. Поэтому кнопка есть,
+    // только когда кампания в целом за пределом ДРР; нет ДРР — когда есть «дорого».
+    var hd = data.hd || [], over = hd[2] != null && hd[3] != null ? hd[2] > hd[3]
+      : cards.some(function (c) { return c[4] === 'e'; });
+    show('zs', rec); show('pause', rec && over);
+    if (rec) { renderCards(); return; }
     list.innerHTML = '';
     [['c', 'Уверен — сними лишнее'], ['s', 'Сомневаюсь — отметь нужное']].forEach(function (g) {
       var rows = items.map(function (it, i) { return [it, i]; }).filter(function (p) { return p[0].tier === g[0]; });
@@ -105,6 +165,13 @@
     apply.textContent = n ? 'Применить (' + n + ')' : (seen ? 'Сохранить' : 'Ничего не отмечено');
     apply.disabled = !n && !seen;
   }
+  [].forEach.call(document.querySelectorAll('#tabs div'), function (t) {
+    t.onclick = function () { tab = t.getAttribute('data-t'); render(); window.scrollTo(0, 0); };
+  });
+  function send(o) { o.b = data.b; var p = JSON.stringify(o); if (tg && tg.sendData) tg.sendData(p); else alert(p); }
+  // Пауза и справка только ПРОСЯТ бота: пауза исполняется кнопкой подтверждения в чате
+  document.getElementById('pause').onclick = function () { send({ pause: true }); };
+  document.getElementById('zs').onclick = function () { send({ zs: true }); };
   render();
 
   apply.onclick = function () {
