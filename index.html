@@ -106,10 +106,12 @@
     if (hd) {
       var h = document.createElement('p'); h.className = 'head';
       h.innerHTML = 'Расход <b>' + num(hd[0]) + '</b> сум · ' + hd[1] + ' зак' +
-        (hd[2] != null ? ' · ДРР <b>' + hd[2] + '%</b>' + (hd[3] != null ? ' при пределе ' + hd[3] + '%' : '') : '');
+        (hd[2] != null ? ' · ДРР <b' + (hd[3] != null && hd[2] > hd[3] ? ' style="color:#d64545"' : '') + '>' + hd[2] + '%</b>' + (hd[3] != null ? ' при пределе ' + hd[3] + '%' : '') : '');
       list.appendChild(h);
     }
-    cards.slice().sort(function (a, b) { return (VERD[a[4]] || VERD.n)[1] - (VERD[b[4]] || VERD.n)[1] || b[1] - a[1]; })
+    // «Дорого» сверху, дальше строго по деньгам: у Подушки кластер «рано судить» на половину
+    // бюджета тонул под десятью мелкими «без заказов» (тест 18.09)
+    cards.slice().sort(function (a, b) { return (a[4] === 'e' ? 0 : 1) - (b[4] === 'e' ? 0 : 1) || b[1] - a[1]; })
       .forEach(function (c) {
         var v = VERD[c[4]] ? c[4] : 'n', d = document.createElement('div');
         d.className = 'card v-' + v;
