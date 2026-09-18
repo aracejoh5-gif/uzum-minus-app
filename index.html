@@ -152,6 +152,7 @@
         var nums = hd.length ? num(hd[0]) + ' сум · ' + hd[1] + ' зак' +
           (hd[2] != null && s !== 3 ? ' · ДРР ' + hd[2] + '%' : '') + (s === 3 ? ' · предел ' + hd[3] + '%' : '') : '';
         if (w && s !== 1) nums += (nums ? ' · ' : '') + 'слов: ' + w;
+        if (c.ph && c.ph[2]) nums += (nums ? ' · ' : '') + 'органика ' + c.ph[2] + '-е';
         var d = document.createElement('div');
         d.className = 'camp s' + s;
         d.innerHTML = '<div class="body"><div class="nm">' + esc(c.n || '?') + '</div><div class="n">' + nums + '</div></div>' +
@@ -188,6 +189,19 @@
       h.innerHTML = 'Расход <b>' + num(hd[0]) + '</b> сум · ' + hd[1] + ' зак' +
         (hd[2] != null ? ' · ДРР <b' + (hd[3] != null && hd[2] > hd[3] ? ' style="color:#d64545"' : '') + '>' + hd[2] + '%</b>' + (hd[3] != null ? ' при пределе ' + hd[3] + '%' : '') : '');
       list.appendChild(h);
+    }
+    // Три числа стратегии «органический топ-10, общий ДРР ≤5%»:
+    // ph = [общий ДРР, доля рекламы в заказах, лучшее органическое место, в топ-10, измерено, скрыто рекламой]
+    var ph = data.ph;
+    if (ph) {
+      var s2 = document.createElement('p'); s2.className = 'head';
+      var good = ph[0] != null && ph[0] <= 5;
+      s2.innerHTML = 'Общий ДРР <b style="color:' + (ph[0] == null ? 'inherit' : good ? 'var(--ok)' : '#d9a400') + '">' +
+        (ph[0] == null ? 'н/д' : ph[0] + '%') + '</b> при цели 5%' +
+        (ph[1] != null ? ' · реклама даёт <b>' + Math.round(ph[1]) + '%</b> заказов' : '') +
+        '<br>Органика: ' + (ph[2] ? 'лучшее место <b>' + ph[2] + '-е</b>, в топ-10: ' + ph[3] + ' из ' + ph[4] : 'не видно') +
+        (ph[5] ? ' <span style="color:var(--hint)">· под рекламой скрыто ' + ph[5] + '</span>' : '');
+      list.appendChild(s2);
     }
     // «Что сделать»: максимум три строки, по убыванию денег — ответ одним взглядом, без
     // чтения карточек (Николай, 18.09: «не словесным поносом»). Всё считается из того же payload.
