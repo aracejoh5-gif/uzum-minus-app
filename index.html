@@ -205,7 +205,8 @@
       grow.forEach(function (g) {
         var d = document.createElement('div'); d.className = 'card grow';
         d.innerHTML = '<div class="top"><div class="k">' + esc(g[0]) + '</div></div>' +
-          '<div class="do">' + g[1] + ' зак без рекламы — добавь ключом</div>';
+          '<div class="n">' + g[1] + ' зак · ' + g[2] + ' кликов' + (g[3] ? ' · внутри кластера «' + esc(g[3]) + '»' : '') + '</div>' +
+          '<div class="do">Хорошо продаёт — можно выделить отдельным ключом</div>';
         list.appendChild(d);
       });
     }
