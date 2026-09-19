@@ -58,6 +58,9 @@
   .bid .row2 { display:flex; align-items:center; gap:12px; margin-top:8px; user-select:none; }
   .rf { color:inherit; font-weight:700; text-decoration:underline; white-space:nowrap; }
   .stale { background:#d9a400; color:#1b1b1b; border-radius:10px; padding:10px 12px; margin:0 0 10px; font-weight:600; font-size:14px; }
+  #toast { position:fixed; left:12px; right:12px; bottom:calc(78px + env(safe-area-inset-bottom,0px)); border-radius:10px; padding:10px 12px; font-size:14px; font-weight:600; display:none; z-index:5; }
+  #toast.ok { background:var(--ok); color:#fff; } #toast.err { background:#d64545; color:#fff; }
+  #toast button { flex:none; width:auto; display:inline; background:transparent; color:inherit; text-decoration:underline; padding:0; margin-left:8px; font-size:14px; font-weight:700; }
   .bid.b-m, .bid.b-u, .bid.b-x { border-left-color:#d64545; } .bid.b-d { border-left-color:#e67e22; } .bid.b-n { border-left-color:#8a8f98; } .bid.b-o, .bid.b-c { border-left-color:var(--ok); } .bid.b-t { border-left-color:#d9a400; } .bid.b-p { border-left-color:var(--btn); }
   .bid .chip { background:#8a8f98; } .bid.b-m .chip, .bid.b-u .chip, .bid.b-x .chip { background:#d64545; } .bid.b-d .chip { background:#e67e22; }
   .bid.b-o .chip, .bid.b-c .chip { background:var(--ok); } .bid.b-t .chip { background:#d9a400; } .bid.b-p .chip { background:var(--btn); }
@@ -83,6 +86,7 @@
 <div id="tabs"><div data-t="w">Слова</div><div data-t="r">Рекомендации</div><div data-t="b">Ставки</div></div>
 <p class="sub" id="sub">Отметь, что убрать из показов. Отмеченное уйдёт в кабинет после «Применить».</p>
 <div id="list"></div>
+<div id="toast"></div>
 <div id="bar">
   <button id="cancel">Отмена</button>
   <button id="apply">Применить</button>
@@ -93,6 +97,8 @@
 (function () {
   var tg = window.Telegram && Telegram.WebApp;
   if (tg) { tg.ready(); tg.expand(); }
+  var API = 'https://165-22-76-154.sslip.io'; // сменить при переезде на свой домен
+  var initData = (tg && tg.initData) || '';
   function theme() {
     if (!tg || !tg.themeParams) return;
     var p = tg.themeParams, r = document.documentElement.style;
@@ -116,6 +122,23 @@
     list.innerHTML = '<div class="empty">' + msg + '</div>';
     show('bar', false); show('sub', false);
   }
+  // Ответ сервера — чужой HTML: экранируем всё через esc(), затем возвращаем разрешённый
+  // минимум тегов (b/i/code/br). Не regex-парсинг HTML — просто обратная замена жёстко
+  // заданных экранированных форм, поэтому произвольный <img onerror> остаётся текстом.
+  function safeHtml(s) {
+    return esc(s)
+      .replace(/&lt;(\/?)(b|i|code)&gt;/g, '<$1$2>')
+      .replace(/\n/g, '<br>');
+  }
+  var toastTimer = null;
+  function toast(html, kind) {
+    var t = $('toast');
+    clearTimeout(toastTimer);
+    t.className = kind === 'ok' ? 'ok' : 'err';
+    t.innerHTML = html;
+    t.style.display = 'block';
+    toastTimer = setTimeout(function () { t.style.display = 'none'; }, 6000);
+  }
 
   // Данные едут в ссылке. ?z= — все кампании, deflate-raw + base64url (главный экран);
   // ?d= — одна кампания без сжатия (старые кнопки и запасной вход). Не в #: Telegram
@@ -137,6 +160,24 @@
 
   var all = [], data = null, items = [], cards = [], grow = [], bids = [], bidOn = {}, tab = 'w', seen = false;
   var VERD = { e: 'Дорого', z: 'Без заказов', r: 'Рано судить', n: 'Нет маржи', h: 'Держать' };
+  var mode = 'link'; // 'server' — данные и действия через API; 'link' — запасной, как раньше (?z=/?d=, sendData)
+
+  // ---- режим сервера: авторизация подписью Telegram, без своих токенов/cookies
+  function fetchState() {
+    var ctl = new AbortController(), timer = setTimeout(function () { ctl.abort(); }, 6000);
+    return fetch(API + '/api/state', { headers: { 'X-Tg-Init-Data': initData }, signal: ctl.signal })
+      .then(function (r) {
+        clearTimeout(timer);
+        if (r.status === 401) return Promise.reject('auth');
+        if (!r.ok) return Promise.reject('http');
+        return r.json();
+      })
+      .then(function (o) {
+        var c = o.c || [];
+        c.forEach(function (x) { if (o.t && !x.t) x.t = o.t; });
+        return c;
+      }, function (e) { clearTimeout(timer); return Promise.reject(e === 'auth' ? 'auth' : (e && e.name === 'AbortError' ? 'timeout' : 'net')); });
+  }
 
   // 3 — ДРР кампании выше предела, 2 — есть «дорого» или «сливает» (w=1), 1 — есть слова, 0 — спокойно
   function sev(c) {
@@ -338,7 +379,16 @@
     kb.textContent = '📋 Все ключи кампании — списком в чат';
     kb.onclick = function () { tap(); send({ keys: true }); };
     list.appendChild(kb);
-    if (data.un) { var u = document.createElement('div'); u.className = 'empty'; u.textContent = 'Ещё не проверены: ' + data.un + ' ключей — показов почти нет, отключать рано'; list.appendChild(u); }
+    if (data.un) {
+      var u = document.createElement('div'); u.className = 'empty';
+      u.textContent = 'Ещё не проверены: ' + data.un + ' ключей — показов почти нет, отключать рано';
+      list.appendChild(u);
+      if (data.un_names && data.un_names.length) {
+        var det = document.createElement('details'); det.style.cssText = 'margin:-6px 0 12px;font-size:13px;color:var(--hint)';
+        det.innerHTML = '<summary>показать названия</summary>' + data.un_names.map(esc).join(', ');
+        list.appendChild(det);
+      }
+    }
     if (data.sr > 0) { var m = document.createElement('div'); m.className = 'empty'; m.textContent = 'ещё ' + data.sr + ' ключей — держим или мало данных'; list.appendChild(m); }
     bar();
   }
@@ -410,12 +460,67 @@
   [].forEach.call(document.querySelectorAll('#tabs div'), function (t) {
     t.onclick = function () { tab = t.getAttribute('data-t'); render(); window.scrollTo(0, 0); };
   });
-  // «Обновить»: своего сервера у приложения нет — просим Улю прислать свежую ссылку. Приложение закроется,
-  // в чате появится обновлённая кнопка. В кабинет при этом не пишется ничего.
+  // «Обновить»: в режиме сервера — повторный GET на месте, без закрытия приложения.
+  // В запасном режиме сервера нет — просим Улю прислать свежую ссылку (приложение закроется).
   document.addEventListener('click', function (e) {
-    if (e.target && e.target.className === 'rf') { e.preventDefault(); tap(); send({ refresh: true }); }
+    if (e.target && e.target.className === 'rf') {
+      e.preventDefault(); tap();
+      if (mode === 'server') refreshInPlace(); else send({ refresh: true });
+    }
   });
-  function send(o) { o.b = (data || all[0] || {}).b; var p = JSON.stringify(o); if (tg && tg.sendData) tg.sendData(p); else alert(p); }
+  function refreshInPlace() {
+    var curName = data && data.n, wasHome = !data, curTab = tab;
+    var prevList = list.innerHTML;
+    list.innerHTML = '<div class="empty">Обновляю…</div>';
+    fetchState().then(function (c) {
+      all = c || [];
+      if (wasHome || all.length <= 1) { if (all.length === 1) open(0); else home(); return; }
+      var idx = 0;
+      for (var i = 0; i < all.length; i++) if (all[i].n === curName) { idx = i; break; }
+      open(idx);
+      if (items.length || cards.length || hasB()) tab = (tab === 'w' && !items.length) || (tab === 'r' && !cards.length) || (tab === 'b' && !hasB()) ? tab : curTab;
+      render();
+    }, function (e) {
+      list.innerHTML = prevList;
+      toast(e === 'auth' ? 'Подпись устарела — открой приложение заново из меню Ули.' : 'Сервер не ответил, попробуй ещё раз.', 'err');
+    });
+  }
+  function send(o) {
+    o.b = (data || all[0] || {}).b;
+    if (mode === 'server') { sendServer(o); return; }
+    var p = JSON.stringify(o);
+    if (tg && tg.sendData) tg.sendData(p); else alert(p);
+  }
+  function sendServer(o) {
+    apply.disabled = true;
+    var prevText = apply.textContent;
+    apply.textContent = 'Отправляю…';
+    var ctl = new AbortController(), timer = setTimeout(function () { ctl.abort(); }, 6000);
+    fetch(API + '/api/action', {
+      method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Tg-Init-Data': initData },
+      body: JSON.stringify(o), signal: ctl.signal
+    }).then(function (r) {
+      clearTimeout(timer);
+      if (r.status === 401) return Promise.reject('auth');
+      return r.json().catch(function () { return {}; }).then(function (j) { return { r: r, j: j }; });
+    }).then(function (res) {
+      var j = res.j || {};
+      if (!res.r.ok || j.ok === false) { toast(safeHtml(j.error || 'Сервер не ответил, попробуй ещё раз.'), 'err'); afterSend(o, false); return; }
+      var html = j.text ? safeHtml(j.text) : 'Готово.';
+      if (j.chat) html += '<br>→ подтверди кнопкой в чате с Улей' + (tg && tg.close ? ' <button id="toChat">Перейти в чат</button>' : '');
+      toast(html, 'ok');
+      if (tg && tg.close) { var tb = $('toast').querySelector('#toChat'); if (tb) tb.onclick = function () { tg.close(); }; }
+      afterSend(o, !!j.refresh);
+    }, function (e) {
+      toast(e === 'auth' ? 'Подпись устарела — открой приложение заново из меню Ули.' : 'Сервер не ответил, попробуй ещё раз.', 'err');
+      afterSend(o, false);
+    });
+    function afterSend(o, forceRefresh) {
+      apply.disabled = false; apply.textContent = prevText;
+      var needsRefresh = forceRefresh || o.cancel || o.checked;
+      if (needsRefresh) refreshInPlace();
+    }
+  }
   // Пауза и справка только ПРОСЯТ бота: пауза исполняется кнопкой подтверждения в чате
   $('pause').onclick = function () { send({ pause: true }); };
   $('zs').onclick = function () { send({ zs: true }); };
@@ -431,14 +536,50 @@
   $('back').onclick = home;
   if (tg && tg.BackButton && tg.BackButton.onClick) tg.BackButton.onClick(home);
 
-  load().then(function (c) {
-    all = (c || []).filter(function (x) { return x && ((x.i && x.i.length) || (x.k && x.k.length) || (x.s && x.s.length) || x.a); });
+  function boot(list_) {
+    all = (list_ || []).filter(function (x) { return x && ((x.i && x.i.length) || (x.k && x.k.length) || (x.s && x.s.length) || x.a); });
     if (!all.length) return fail('Список не загрузился. Закрой и открой заново из сообщения бота.');
     if (all.length === 1) open(0); else home();
-  }, function (e) {
-    fail(e === 'old' ? 'Этот телефон не умеет открыть общий список. Напиши боту «минус-слова» и название кампании — откроется одна кампания.'
-                     : 'Список не загрузился. Закрой и открой заново из сообщения бота.');
-  });
+  }
+  function retryScreen(msg) {
+    list.innerHTML = '<div class="empty">' + esc(msg) + '<br><button id="retry" style="margin-top:14px;width:auto;padding:11px 22px;border:0;border-radius:10px;font-weight:600;background:var(--btn);color:var(--btnfg)">Повторить</button></div>';
+    show('bar', false); show('sub', false);
+    $('retry').onclick = startServer;
+  }
+  function startServer() {
+    fetchState().then(function (c) { mode = 'server'; boot(c); }, function (e) {
+      load().then(function (c) {   // сервер недоступен — если в ссылке есть данные, тихо уходим в запасной режим
+        if (c && c.length) {
+          mode = 'link';
+          boot(c);
+          var pl = document.createElement('div'); pl.className = 'stale';
+          pl.textContent = 'Сервер не ответил — показываю данные из ссылки.';
+          list.insertBefore(pl, list.firstChild);
+        } else if (e === 'auth') {
+          fail('Подпись устарела. Открой приложение заново из меню Ули.');
+        } else {
+          retryScreen('Не получилось загрузить данные. Проверь VPN и открой ещё раз.');
+        }
+      }, function () {
+        if (e === 'auth') fail('Подпись устарела. Открой приложение заново из меню Ули.');
+        else retryScreen('Не получилось загрузить данные. Проверь VPN и открой ещё раз.');
+      });
+    });
+  }
+
+  if (initData) {
+    startServer();
+  } else {
+    var q0 = new URLSearchParams(location.search);
+    if (q0.get('api') === '1' && !q0.get('z') && !q0.get('d')) {
+      fail('Открой приложение из Telegram — кнопкой меню у Ули.');
+    } else {
+      load().then(boot, function (e) {
+        fail(e === 'old' ? 'Этот телефон не умеет открыть общий список. Напиши боту «минус-слова» и название кампании — откроется одна кампания.'
+                         : 'Список не загрузился. Закрой и открой заново из сообщения бота.');
+      });
+    }
+  }
 })();
 </script>
 </body>
