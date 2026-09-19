@@ -267,7 +267,8 @@
   // ДРР ключа за 7 дней против предела кампании (hd[3] — маржа в % цены): выше предела — ключ работает в минус
   function drrLine(b) {
     var lim = (data.hd || [])[3], d = b[9];
-    if (d == null) return b[5] ? '<div class="s" style="margin-top:8px;white-space:normal">Расход ' + num(b[5]) + ' сум без продаж с рекламы</div>' : '';
+    if (b.length < 10) return '';                       // ссылка старого формата: ДРР в ней нет вовсе — это не «нет продаж»
+    if (d == null) return b[5] && !b[4] ? '<div class="s" style="margin-top:8px;white-space:normal">Расход ' + num(b[5]) + ' сум без продаж с рекламы</div>' : '';
     var bad = lim != null && d > lim;
     return '<div class="s" style="margin-top:8px;white-space:normal' + (bad ? ';color:#d64545;font-weight:600' : '') + '">ДРР ключа ' + d + '%' +
       (lim != null ? ' при пределе ' + lim + '%' : '') + '</div>';
@@ -318,7 +319,8 @@
       }
       list.appendChild(d);
     });
-    if (data.sr) { var m = document.createElement('div'); m.className = 'empty'; m.textContent = 'ещё ' + data.sr + ' ключей — держим или мало данных'; list.appendChild(m); }
+    if (data.un) { var u = document.createElement('div'); u.className = 'empty'; u.textContent = 'Ещё не проверены: ' + data.un + ' ключей — показов почти нет, отключать рано'; list.appendChild(u); }
+    if (data.sr > 0) { var m = document.createElement('div'); m.className = 'empty'; m.textContent = 'ещё ' + data.sr + ' ключей — держим или мало данных'; list.appendChild(m); }
     bar();
   }
   function bar() {
@@ -334,7 +336,7 @@
     apply.disabled = !n;
   }
 
-  function hasB() { return bids.length || (data && data.a); }   // авто включено — вкладка нужна и без советов: иначе его не выключить
+  function hasB() { return bids.length || (data && (data.a || data.un)); }   // авто включено — вкладка нужна и без советов: иначе его не выключить
   function render() {
     var tabsN = (items.length ? 1 : 0) + (cards.length ? 1 : 0) + (hasB() ? 1 : 0);
     $('tabs').style.display = tabsN > 1 ? 'flex' : 'none';
