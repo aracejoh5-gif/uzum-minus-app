@@ -164,6 +164,7 @@
           (hd[2] != null && s !== 3 ? ' · ДРР ' + hd[2] + '%' : '') + (s === 3 ? ' · предел ' + hd[3] + '%' : '') : '';
         if (w && s !== 1) nums += (nums ? ' · ' : '') + 'слов: ' + w;
         if (c.ph && c.ph[2]) nums += (nums ? ' · ' : '') + 'органика ' + c.ph[2] + '-е';
+        if (c.a) nums += (nums ? ' · ' : '') + '🤖 авто';
         var d = document.createElement('div');
         d.className = 'camp s' + s;
         d.innerHTML = '<div class="body"><div class="nm">' + esc(c.n || '?') + '</div><div class="n">' + nums + '</div></div>' +
@@ -265,6 +266,17 @@
   var BID = { d: 'Снизить', o: 'Можно отключать', m: 'Вернуть ключ', c: 'Ключ закрыт', u: 'Не окупается', t: 'Минимум не тянет' };
   function renderBids() {
     list.innerHTML = '<p class="head">Цель по каждому ключу — отключить ставку: к минимуму → в топ-5 → отключаем → органика упала ниже 10-го → возвращаем минималку.</p>';
+    // Авто-режим: приложение только ПРОСИТ включить — включает кнопка подтверждения в боте; выключение — сразу
+    var au = document.createElement('div');
+    au.className = 'bid b-' + (data.a ? 'c' : 't');
+    au.innerHTML = '<div class="top"><div class="k">🤖 Авто-режим</div><div class="chip">' + (data.a ? 'Включён' : 'Выключен') + '</div></div>' +
+      '<div class="do" style="margin-top:8px;font-weight:400">' + (data.a
+        ? 'Раз в день сама снижаю ставки с советом «Снизить», через 3 дня проверяю заказы и возвращаю ставку, если просело. Ключ-кормилец не трогаю.'
+        : 'Включи — и «Снизить» я буду исполнять сама: не ниже 9 500, до 3 ключей в день, с проверкой через 3 дня и откатом. Отключать и возвращать ключи останется за тобой.') + '</div>' +
+      '<button style="margin-top:10px;width:100%;padding:11px;border:0;border-radius:10px;font-weight:600;font-size:15px;background:' +
+      (data.a ? 'var(--line);color:var(--fg)' : 'var(--btn);color:var(--btnfg)') + '">' + (data.a ? 'Выключить авто' : 'Включить авто…') + '</button>';
+    au.querySelector('button').onclick = function () { tap(); send({ auto: !data.a }); };
+    list.appendChild(au);
     bids.forEach(function (b) {
       var code = BID[b[6]] ? b[6] : 't', d = document.createElement('div');
       d.className = 'bid b-' + code;
@@ -291,17 +303,19 @@
   }
   function bar() {
     if (tab !== 'b') return;
+    show('apply', bids.some(function (b) { return b[6] === 'd'; }));
     var n = Object.keys(bidOn).filter(function (k) { return bidOn[k]; }).length;
     apply.textContent = n ? 'Снизить ставки (' + n + ')' : 'Отметь, что снизить';
     apply.disabled = !n;
   }
 
+  function hasB() { return bids.length || (data && data.a); }   // авто включено — вкладка нужна и без советов: иначе его не выключить
   function render() {
-    var tabsN = (items.length ? 1 : 0) + (cards.length ? 1 : 0) + (bids.length ? 1 : 0);
+    var tabsN = (items.length ? 1 : 0) + (cards.length ? 1 : 0) + (hasB() ? 1 : 0);
     $('tabs').style.display = tabsN > 1 ? 'flex' : 'none';
     [].forEach.call(document.querySelectorAll('#tabs div'), function (t) {
       var k = t.getAttribute('data-t');
-      t.style.display = (k === 'w' && !items.length) || (k === 'r' && !cards.length) || (k === 'b' && !bids.length) ? 'none' : '';
+      t.style.display = (k === 'w' && !items.length) || (k === 'r' && !cards.length) || (k === 'b' && !hasB()) ? 'none' : '';
     });
     if (tab === 'b') {
       [].forEach.call(document.querySelectorAll('#tabs div'), function (t) { t.className = t.getAttribute('data-t') === tab ? 'on' : ''; });
@@ -367,7 +381,7 @@
   if (tg && tg.BackButton && tg.BackButton.onClick) tg.BackButton.onClick(home);
 
   load().then(function (c) {
-    all = (c || []).filter(function (x) { return x && ((x.i && x.i.length) || (x.k && x.k.length)); });
+    all = (c || []).filter(function (x) { return x && ((x.i && x.i.length) || (x.k && x.k.length) || (x.s && x.s.length) || x.a); });
     if (!all.length) return fail('Список не загрузился. Закрой и открой заново из сообщения бота.');
     if (all.length === 1) open(0); else home();
   }, function (e) {
