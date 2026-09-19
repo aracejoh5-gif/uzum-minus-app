@@ -264,6 +264,14 @@
 
   // ---- вкладка «Ставки»: s = [ключ, ставка, бустовое место, органическое место, заказы 7 дн, расход, совет, значение, № в пачке]
   var BID = { d: 'Снизить', o: 'Можно отключать', m: 'Вернуть ключ', c: 'Ключ закрыт', u: 'Не окупается', t: 'Минимум не тянет' };
+  // ДРР ключа за 7 дней против предела кампании (hd[3] — маржа в % цены): выше предела — ключ работает в минус
+  function drrLine(b) {
+    var lim = (data.hd || [])[3], d = b[9];
+    if (d == null) return b[5] ? '<div class="s" style="margin-top:8px;white-space:normal">Расход ' + num(b[5]) + ' сум без продаж с рекламы</div>' : '';
+    var bad = lim != null && d > lim;
+    return '<div class="s" style="margin-top:8px;white-space:normal' + (bad ? ';color:#d64545;font-weight:600' : '') + '">ДРР ключа ' + d + '%' +
+      (lim != null ? ' при пределе ' + lim + '%' : '') + '</div>';
+  }
   function renderBids() {
     list.innerHTML = '<p class="head">Цель по каждому ключу — отключить ставку: к минимуму → в топ-5 → отключаем → органика упала ниже 10-го → возвращаем минималку.</p>';
     // Авто-режим: приложение только ПРОСИТ включить — включает кнопка подтверждения в боте; выключение — сразу
@@ -289,6 +297,7 @@
       d.innerHTML = '<div class="top"><div class="k">' + esc(b[0]) + '</div><div class="chip">' + BID[code] + '</div></div>' +
         '<div class="nums"><div><b>' + (b[1] ? num(b[1]) : 'выкл') + '</b>ставка</div><div><b>' + (b[2] || '—') + '</b>место с рекламой</div>' +
         '<div><b>' + (b[3] || '—') + '</b>без рекламы</div><div><b>' + b[4] + '</b>зак · ' + num(b[5]) + '</div></div>' +
+        drrLine(b) +
         (code === 'd' ? '<div class="row2"><div class="box"></div><div class="do">' + what + '</div></div>' : '<div class="do" style="margin-top:8px">' + what + '</div>');
       if (code === 'd') {
         var row = d.querySelector('.row2'), box = d.querySelector('.box');
