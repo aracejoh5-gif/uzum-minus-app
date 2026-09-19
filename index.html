@@ -332,6 +332,12 @@
       }
       list.appendChild(d);
     });
+    // «Все ключи»: в ссылку названия всех ключей не влезают — Уля пришлёт полный список таблицей в чат
+    var kb = document.createElement('button');
+    kb.style.cssText = 'margin:6px 0 2px;width:100%;padding:11px;border:1px solid var(--line);border-radius:10px;font-weight:600;font-size:15px;background:transparent;color:var(--fg)';
+    kb.textContent = '📋 Все ключи кампании — списком в чат';
+    kb.onclick = function () { tap(); send({ keys: true }); };
+    list.appendChild(kb);
     if (data.un) { var u = document.createElement('div'); u.className = 'empty'; u.textContent = 'Ещё не проверены: ' + data.un + ' ключей — показов почти нет, отключать рано'; list.appendChild(u); }
     if (data.sr > 0) { var m = document.createElement('div'); m.className = 'empty'; m.textContent = 'ещё ' + data.sr + ' ключей — держим или мало данных'; list.appendChild(m); }
     bar();
