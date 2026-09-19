@@ -56,6 +56,7 @@
   .bid .k { font-weight:600; min-width:0; overflow-wrap:anywhere; }
   .bid .do { font-size:14px; font-weight:600; }
   .bid .row2 { display:flex; align-items:center; gap:12px; margin-top:8px; user-select:none; }
+  .rf { color:inherit; font-weight:700; text-decoration:underline; white-space:nowrap; }
   .stale { background:#d9a400; color:#1b1b1b; border-radius:10px; padding:10px 12px; margin:0 0 10px; font-weight:600; font-size:14px; }
   .bid.b-m, .bid.b-u, .bid.b-x { border-left-color:#d64545; } .bid.b-d { border-left-color:#e67e22; } .bid.b-n { border-left-color:#8a8f98; } .bid.b-o, .bid.b-c { border-left-color:var(--ok); } .bid.b-t { border-left-color:#d9a400; } .bid.b-p { border-left-color:var(--btn); }
   .bid .chip { background:#8a8f98; } .bid.b-m .chip, .bid.b-u .chip, .bid.b-x .chip { background:#d64545; } .bid.b-d .chip { background:#e67e22; }
@@ -148,11 +149,12 @@
   // Данные вшиты в ссылку и сами не обновляются: показываем, на какое время они собраны, и предупреждаем о старых.
   // t — минуты эпохи; в старых ссылках его нет — тогда честно говорим, что список из старого сообщения.
   function freshness(t) {
-    if (!t) return '<div class="stale">Список из старого сообщения — напиши Уле /start, чтобы увидеть, что изменилось</div>';
+    var btn = ' <a href="#" class="rf" onclick="return false">↻ Обновить</a>';
+    if (!t) return '<div class="stale">Список из старого сообщения — ключи и ставки могли измениться.' + btn + '</div>';
     var age = Math.round(Date.now() / 60000 - t), d = new Date(t * 60000);
     var hm = ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2);
-    return age > 60 ? '<div class="stale">Данные на ' + hm + ' — списку больше часа. Напиши Уле /start: ключи и ставки могли измениться</div>'
-                    : '<p class="head" style="margin-top:-4px">Данные на ' + hm + '</p>';
+    return age > 60 ? '<div class="stale">Данные на ' + hm + ' — списку больше часа, ключи и ставки могли измениться.' + btn + '</div>'
+                    : '<p class="head" style="margin-top:-4px">Данные на ' + hm + ' ·' + btn + '</p>';
   }
 
   // ---- главный экран: список кампаний, проблемные сверху
@@ -206,7 +208,7 @@
   // ---- вкладка «Рекомендации»: k = [ключ, расход, заказы, цена заказа, вердикт, порог ставки, сливает?]
   // g = [запрос, заказы, клики] — свои подсказки, никаких кнопок действия
   function renderCards() {
-    list.innerHTML = '';
+    list.innerHTML = freshness(data.t);
     var hd = data.hd;
     if (hd) {
       var h = document.createElement('p'); h.className = 'head';
@@ -369,7 +371,7 @@
       : cards.some(function (c) { return c[4] === 'e'; });
     show('zs', rec); show('pause', rec && over);
     if (rec) { renderCards(); return; }
-    list.innerHTML = '';
+    list.innerHTML = freshness(data.t);
     [['c', 'Уверен — сними лишнее'], ['s', 'Сомневаюсь — отметь нужное']].forEach(function (g) {
       var rows = items.map(function (it, i) { return [it, i]; }).filter(function (p) { return p[0].tier === g[0]; });
       if (!rows.length) return;
@@ -402,7 +404,12 @@
   [].forEach.call(document.querySelectorAll('#tabs div'), function (t) {
     t.onclick = function () { tab = t.getAttribute('data-t'); render(); window.scrollTo(0, 0); };
   });
-  function send(o) { o.b = data.b; var p = JSON.stringify(o); if (tg && tg.sendData) tg.sendData(p); else alert(p); }
+  // «Обновить»: своего сервера у приложения нет — просим Улю прислать свежую ссылку. Приложение закроется,
+  // в чате появится обновлённая кнопка. В кабинет при этом не пишется ничего.
+  document.addEventListener('click', function (e) {
+    if (e.target && e.target.className === 'rf') { e.preventDefault(); tap(); send({ refresh: true }); }
+  });
+  function send(o) { o.b = (data || all[0] || {}).b; var p = JSON.stringify(o); if (tg && tg.sendData) tg.sendData(p); else alert(p); }
   // Пауза и справка только ПРОСЯТ бота: пауза исполняется кнопкой подтверждения в чате
   $('pause').onclick = function () { send({ pause: true }); };
   $('zs').onclick = function () { send({ zs: true }); };
