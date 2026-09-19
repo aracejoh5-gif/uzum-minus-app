@@ -349,6 +349,8 @@
       au.appendChild(upb);
     }
     list.appendChild(au);
+    var offBox = document.createElement('details');
+    offBox.style.cssText = 'margin:10px 0';
     bids.forEach(function (b) {
       var code = BID[b[6]] ? b[6] : 't', d = document.createElement('div');
       d.className = 'bid b-' + code;
@@ -374,8 +376,16 @@
         row.onclick = function () { bidOn[b[8]] = !bidOn[b[8]]; tap(); paint(); bar(); };
         paint();
       }
-      list.appendChild(d);
+      (code === 'f' ? offBox : list).appendChild(d);      // выключенные — в сворачиваемый блок, иначе 12 серых карточек подряд
     });
+    var offN = offBox.children.length;
+    if (offN) {
+      var sm = document.createElement('summary');
+      sm.style.cssText = 'font-weight:600;padding:10px 4px;cursor:pointer';
+      sm.textContent = 'Выключенные ключи · ' + offN + ' — можно вернуть галкой';
+      offBox.insertBefore(sm, offBox.firstChild);
+      list.appendChild(offBox);
+    }
     // «Все ключи»: в ссылку названия всех ключей не влезают — Уля пришлёт полный список таблицей в чат
     var kb = document.createElement('button');
     kb.style.cssText = 'margin:6px 0 2px;width:100%;padding:11px;border:1px solid var(--line);border-radius:10px;font-weight:600;font-size:15px;background:transparent;color:var(--fg)';
