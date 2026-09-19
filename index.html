@@ -507,6 +507,11 @@
       return r.json().catch(function () { return {}; }).then(function (j) { return { r: r, j: j }; });
     }).then(function (res) {
       var j = res.j || {};
+      if (res.r.status === 429) {     // лимит сервера — не сбой: «попробуй ещё раз» тут только усугубит
+        toast(j.error === 'too_many_confirms' ? 'Слишком много запросов подряд — подожди 10 минут. Подтверждения уже лежат в чате с Улей.'
+                                              : 'Слишком часто — подожди минуту.', 'err');
+        afterSend(o, false); return;
+      }
       if (!res.r.ok || j.ok === false) { toast(safeHtml(j.error || 'Сервер не ответил, попробуй ещё раз.'), 'err'); afterSend(o, false); return; }
       var html = j.text ? safeHtml(j.text) : 'Готово.';
       if (j.chat) html += '<br>→ подтверди кнопкой в чате с Улей' + (tg && tg.close ? ' <button id="toChat">Перейти в чат</button>' : '');
