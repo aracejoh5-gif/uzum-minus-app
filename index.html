@@ -51,6 +51,17 @@
   .card.grow { border-left-color:var(--ok); }
   .card.grow .do { color:var(--ok); }
   #pause { background:#d64545; color:#fff; }
+  .bid { background:var(--card); border-radius:12px; padding:12px; margin-bottom:8px; border-left:5px solid var(--line); }
+  .bid .top { display:flex; justify-content:space-between; align-items:flex-start; gap:8px; }
+  .bid .k { font-weight:600; min-width:0; overflow-wrap:anywhere; }
+  .bid .do { font-size:14px; font-weight:600; }
+  .bid .row2 { display:flex; align-items:center; gap:12px; margin-top:8px; user-select:none; }
+  .bid.b-d, .bid.b-m, .bid.b-u { border-left-color:#d64545; } .bid.b-o, .bid.b-c { border-left-color:var(--ok); } .bid.b-t { border-left-color:#d9a400; }
+  .bid .chip { background:#8a8f98; } .bid.b-d .chip, .bid.b-m .chip, .bid.b-u .chip { background:#d64545; }
+  .bid.b-o .chip, .bid.b-c .chip { background:var(--ok); } .bid.b-t .chip { background:#d9a400; }
+  .nums { display:flex; gap:6px; margin-top:8px; }
+  .nums div { flex:1; background:var(--bg); border-radius:9px; padding:6px 4px; text-align:center; font-size:12px; color:var(--hint); }
+  .nums b { display:block; font-size:16px; color:var(--fg); }
   .camp { display:flex; align-items:center; gap:10px; background:var(--card); border-radius:12px; padding:13px 12px; margin-bottom:8px; border-left:5px solid var(--line); user-select:none; }
   .camp .body { flex:1; min-width:0; }
   .camp .nm { font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
@@ -67,7 +78,7 @@
 <body>
 <div id="back">‹ Кампании</div>
 <h1 id="title">Минус-слова</h1>
-<div id="tabs"><div data-t="w">Слова</div><div data-t="r">Рекомендации</div></div>
+<div id="tabs"><div data-t="w">Слова</div><div data-t="r">Рекомендации</div><div data-t="b">Ставки</div></div>
 <p class="sub" id="sub">Отметь, что убрать из показов. Отмеченное уйдёт в кабинет после «Применить».</p>
 <div id="list"></div>
 <div id="bar">
@@ -122,7 +133,7 @@
     return Promise.resolve(d ? [JSON.parse(new TextDecoder().decode(bytes(d)))] : null);
   }
 
-  var all = [], data = null, items = [], cards = [], grow = [], tab = 'w', seen = false;
+  var all = [], data = null, items = [], cards = [], grow = [], bids = [], bidOn = {}, tab = 'w', seen = false;
   var VERD = { e: 'Дорого', z: 'Без заказов', r: 'Рано судить', n: 'Нет маржи', h: 'Держать' };
 
   // 3 — ДРР кампании выше предела, 2 — есть «дорого» или «сливает» (w=1), 1 — есть слова, 0 — спокойно
@@ -169,7 +180,8 @@
     items = (data.i || []).map(function (x) { return { w: x[0], t: x[1], s: x[2], q: x[3], tier: x[4], on: !!x[5] }; });
     cards = data.k || [];
     grow = data.g || [];
-    tab = items.length ? 'w' : 'r'; seen = false;
+    bids = data.s || []; bidOn = {};
+    tab = items.length ? 'w' : (cards.length ? 'r' : 'b'); seen = false;
     $('title').textContent = data.n || 'Минус-слова';
     show('bar', true);
     if (all.length > 1) {
@@ -249,8 +261,53 @@
     }
   }
 
+  // ---- вкладка «Ставки»: s = [ключ, ставка, бустовое место, органическое место, заказы 7 дн, расход, совет, значение, № в пачке]
+  var BID = { d: 'Снизить', o: 'Можно отключать', m: 'Вернуть ключ', c: 'Ключ закрыт', u: 'Не окупается', t: 'Минимум не тянет' };
+  function renderBids() {
+    list.innerHTML = '<p class="head">Цель по каждому ключу — отключить ставку: к минимуму → в топ-5 → отключаем → органика упала ниже 10-го → возвращаем минималку.</p>';
+    bids.forEach(function (b) {
+      var code = BID[b[6]] ? b[6] : 't', d = document.createElement('div');
+      d.className = 'bid b-' + code;
+      var what = code === 'd' ? 'Снизить ставку до <b>' + num(b[7]) + '</b>'
+        : code === 'o' ? 'На минимуме держим топ-5 — исключи ключ в кабинете, органику проверю сама'
+        : code === 'm' ? 'Без рекламы упали ниже 10-го — внеси ключ заново со ставкой <b>' + num(b[7] || 9500) + '</b>'
+        : code === 'c' ? 'Органика держит топ-10 без рекламы — цель достигнута'
+        : code === 'u' ? 'Заказ дороже маржи даже на минимуме — исключи ключ'
+        : 'На минимальной ставке в топ-5 не попадаем — поднимать ли, решает Коля';
+      d.innerHTML = '<div class="top"><div class="k">' + esc(b[0]) + '</div><div class="chip">' + BID[code] + '</div></div>' +
+        '<div class="nums"><div><b>' + (b[1] ? num(b[1]) : 'выкл') + '</b>ставка</div><div><b>' + (b[2] || '—') + '</b>место с рекламой</div>' +
+        '<div><b>' + (b[3] || '—') + '</b>без рекламы</div><div><b>' + b[4] + '</b>зак · ' + num(b[5]) + '</div></div>' +
+        (code === 'd' ? '<div class="row2"><div class="box"></div><div class="do">' + what + '</div></div>' : '<div class="do" style="margin-top:8px">' + what + '</div>');
+      if (code === 'd') {
+        var row = d.querySelector('.row2'), box = d.querySelector('.box');
+        var paint = function () { box.textContent = bidOn[b[8]] ? '✓' : ''; box.style.background = bidOn[b[8]] ? 'var(--ok)' : ''; box.style.borderColor = bidOn[b[8]] ? 'var(--ok)' : ''; box.style.color = '#fff'; };
+        row.onclick = function () { bidOn[b[8]] = !bidOn[b[8]]; tap(); paint(); bar(); };
+        paint();
+      }
+      list.appendChild(d);
+    });
+    if (data.sr) { var m = document.createElement('div'); m.className = 'empty'; m.textContent = 'ещё ' + data.sr + ' ключей — держим или мало данных'; list.appendChild(m); }
+    bar();
+  }
+  function bar() {
+    if (tab !== 'b') return;
+    var n = Object.keys(bidOn).filter(function (k) { return bidOn[k]; }).length;
+    apply.textContent = n ? 'Снизить ставки (' + n + ')' : 'Отметь, что снизить';
+    apply.disabled = !n;
+  }
+
   function render() {
-    $('tabs').style.display = cards.length && items.length ? 'flex' : 'none';
+    var tabsN = (items.length ? 1 : 0) + (cards.length ? 1 : 0) + (bids.length ? 1 : 0);
+    $('tabs').style.display = tabsN > 1 ? 'flex' : 'none';
+    [].forEach.call(document.querySelectorAll('#tabs div'), function (t) {
+      var k = t.getAttribute('data-t');
+      t.style.display = (k === 'w' && !items.length) || (k === 'r' && !cards.length) || (k === 'b' && !bids.length) ? 'none' : '';
+    });
+    if (tab === 'b') {
+      [].forEach.call(document.querySelectorAll('#tabs div'), function (t) { t.className = t.getAttribute('data-t') === tab ? 'on' : ''; });
+      show('sub', false); show('cancel', false); show('apply', true); show('zs', false); show('pause', false);
+      renderBids(); return;
+    }
     [].forEach.call(document.querySelectorAll('#tabs div'), function (t) { t.className = t.getAttribute('data-t') === tab ? 'on' : ''; });
     var rec = tab === 'r';
     show('sub', !rec); show('cancel', !rec); show('apply', !rec);
@@ -298,6 +355,10 @@
   $('pause').onclick = function () { send({ pause: true }); };
   $('zs').onclick = function () { send({ zs: true }); };
   apply.onclick = function () {
+    if (tab === 'b') {       // ставки: шлём только номера строк — ключи и цифры бот берёт из своей базы
+      send({ bids: Object.keys(bidOn).filter(function (k) { return bidOn[k]; }).map(Number) });
+      return;
+    }
     var checked = items.map(function (it, i) { return it.on ? i : -1; }).filter(function (i) { return i >= 0; });
     send({ checked: checked, seen: seen && checked.length < items.length });
   };
