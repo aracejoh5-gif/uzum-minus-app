@@ -56,6 +56,7 @@
   .bid .k { font-weight:600; min-width:0; overflow-wrap:anywhere; }
   .bid .do { font-size:14px; font-weight:600; }
   .bid .row2 { display:flex; align-items:center; gap:12px; margin-top:8px; user-select:none; }
+  .stale { background:#d9a400; color:#1b1b1b; border-radius:10px; padding:10px 12px; margin:0 0 10px; font-weight:600; font-size:14px; }
   .bid.b-m, .bid.b-u, .bid.b-x { border-left-color:#d64545; } .bid.b-d { border-left-color:#e67e22; } .bid.b-n { border-left-color:#8a8f98; } .bid.b-o, .bid.b-c { border-left-color:var(--ok); } .bid.b-t { border-left-color:#d9a400; } .bid.b-p { border-left-color:var(--btn); }
   .bid .chip { background:#8a8f98; } .bid.b-m .chip, .bid.b-u .chip, .bid.b-x .chip { background:#d64545; } .bid.b-d .chip { background:#e67e22; }
   .bid.b-o .chip, .bid.b-c .chip { background:var(--ok); } .bid.b-t .chip { background:#d9a400; } .bid.b-p .chip { background:var(--btn); }
@@ -128,7 +129,7 @@
     if (z) {
       if (!window.DecompressionStream) return Promise.reject('old');
       var st = new Blob([bytes(z)]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
-      return new Response(st).text().then(function (t) { return JSON.parse(t).c; });
+      return new Response(st).text().then(function (t) { var o = JSON.parse(t); (o.c || []).forEach(function (c) { if (o.t && !c.t) c.t = o.t; }); return o.c; });
     }
     return Promise.resolve(d ? [JSON.parse(new TextDecoder().decode(bytes(d)))] : null);
   }
@@ -144,6 +145,16 @@
     return (c.i || []).length ? 1 : 0;
   }
 
+  // Данные вшиты в ссылку и сами не обновляются: показываем, на какое время они собраны, и предупреждаем о старых.
+  // t — минуты эпохи; в старых ссылках его нет — тогда честно говорим, что список из старого сообщения.
+  function freshness(t) {
+    if (!t) return '<div class="stale">Список из старого сообщения — напиши Уле /start, чтобы увидеть, что изменилось</div>';
+    var age = Math.round(Date.now() / 60000 - t), d = new Date(t * 60000);
+    var hm = ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2);
+    return age > 60 ? '<div class="stale">Данные на ' + hm + ' — списку больше часа. Напиши Уле /start: ключи и ставки могли измениться</div>'
+                    : '<p class="head" style="margin-top:-4px">Данные на ' + hm + '</p>';
+  }
+
   // ---- главный экран: список кампаний, проблемные сверху
   function home() {
     data = null;
@@ -151,7 +162,7 @@
     show('back', false); show('tabs', false); show('sub', false); show('bar', false);
     var total = all.reduce(function (s, c) { return s + ((c.hd || [])[0] || 0); }, 0);
     $('title').textContent = 'Реклама Uzum';
-    list.innerHTML = '<p class="head">Расход по отчётам <b>' + num(total) + '</b> сум · кампаний ' + all.length + '</p>';
+    list.innerHTML = freshness((all[0] || {}).t) + '<p class="head">Расход по отчётам <b>' + num(total) + '</b> сум · кампаний ' + all.length + '</p>';
     all.map(function (c, i) { return [c, i]; })
       .sort(function (a, b) { return sev(b[0]) - sev(a[0]) || ((b[0].hd || [])[0] || 0) - ((a[0].hd || [])[0] || 0); })
       .forEach(function (p) {
@@ -274,7 +285,7 @@
       (lim != null ? ' при пределе ' + lim + '%' : '') + '</div>';
   }
   function renderBids() {
-    list.innerHTML = '<p class="head">Цель по каждому ключу — отключить ставку: к минимуму → в топ-5 → отключаем → органика упала ниже 10-го → возвращаем минималку.</p>';
+    list.innerHTML = freshness(data.t) + '<p class="head">Цель по каждому ключу — отключить ставку: к минимуму → в топ-5 → отключаем → органика упала ниже 10-го → возвращаем минималку.</p>';
     // Авто-режим: приложение только ПРОСИТ включить — включает кнопка подтверждения в боте; выключение — сразу
     var au = document.createElement('div');
     au.className = 'bid b-' + (data.a ? 'c' : 't');
