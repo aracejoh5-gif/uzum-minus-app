@@ -56,8 +56,8 @@
   .bid .k { font-weight:600; min-width:0; overflow-wrap:anywhere; }
   .bid .do { font-size:14px; font-weight:600; }
   .bid .row2 { display:flex; align-items:center; gap:12px; margin-top:8px; user-select:none; }
-  .bid.b-d, .bid.b-m, .bid.b-u { border-left-color:#d64545; } .bid.b-o, .bid.b-c { border-left-color:var(--ok); } .bid.b-t { border-left-color:#d9a400; } .bid.b-p { border-left-color:var(--btn); }
-  .bid .chip { background:#8a8f98; } .bid.b-d .chip, .bid.b-m .chip, .bid.b-u .chip { background:#d64545; }
+  .bid.b-m, .bid.b-u, .bid.b-x { border-left-color:#d64545; } .bid.b-d { border-left-color:#e67e22; } .bid.b-n { border-left-color:#8a8f98; } .bid.b-o, .bid.b-c { border-left-color:var(--ok); } .bid.b-t { border-left-color:#d9a400; } .bid.b-p { border-left-color:var(--btn); }
+  .bid .chip { background:#8a8f98; } .bid.b-m .chip, .bid.b-u .chip, .bid.b-x .chip { background:#d64545; } .bid.b-d .chip { background:#e67e22; }
   .bid.b-o .chip, .bid.b-c .chip { background:var(--ok); } .bid.b-t .chip { background:#d9a400; } .bid.b-p .chip { background:var(--btn); }
   .nums { display:flex; gap:6px; margin-top:8px; }
   .nums div { flex:1; background:var(--bg); border-radius:9px; padding:6px 4px; text-align:center; font-size:12px; color:var(--hint); }
@@ -263,7 +263,7 @@
   }
 
   // ---- вкладка «Ставки»: s = [ключ, ставка, бустовое место, органическое место, заказы 7 дн, расход, совет, значение, № в пачке]
-  var BID = { d: 'Снизить', p: 'Поднять', o: 'Можно отключать', m: 'Вернуть ключ', c: 'Ключ закрыт', u: 'Не окупается', t: 'Минимум не тянет' };
+  var BID = { x: 'Мертвяк', n: 'Ещё не проверен', d: 'Снизить', p: 'Поднять', o: 'Можно отключать', m: 'Вернуть ключ', c: 'Ключ закрыт', u: 'Не окупается', t: 'Минимум не тянет' };
   // ДРР ключа за 7 дней против предела кампании (hd[3] — маржа в % цены): выше предела — ключ работает в минус
   function drrLine(b) {
     var lim = (data.hd || [])[3], d = b[9];
@@ -295,13 +295,15 @@
     bids.forEach(function (b) {
       var code = BID[b[6]] ? b[6] : 't', d = document.createElement('div');
       d.className = 'bid b-' + code;
-      var pick = code === 'd' || code === 'p';
+      var pick = 'dpxoum'.indexOf(code) >= 0;      // действия с галкой: ставка вниз/вверх, отключить (x, o, u), вернуть (m)
       var what = code === 'd' ? 'Снизить ставку до <b>' + num(b[7]) + '</b>'
         : code === 'p' ? 'Не в топ-5, до потолка есть запас — поднять до <b>' + num(b[7]) + '</b>'
-        : code === 'o' ? 'На минимуме держим топ-5 — исключи ключ в кабинете, органику проверю сама'
-        : code === 'm' ? 'Без рекламы упали ниже 10-го — внеси ключ заново со ставкой <b>' + num(b[7] || 9500) + '</b>'
+        : code === 'x' ? 'Неделю и больше стоял в топе, показы были, заказов нет — <b>отключить</b>'
+        : code === 'n' ? 'Показов почти нет — ключ ещё не показал себя. Отключать рано'
+        : code === 'o' ? 'На минимуме держим топ-5 — <b>отключить</b> ключ, органику проверю сама'
+        : code === 'm' ? 'Без рекламы упали ниже 10-го — <b>вернуть</b> ключ на ставке <b>' + num(b[7] || 9500) + '</b>'
         : code === 'c' ? 'Органика держит топ-10 без рекламы — цель достигнута'
-        : code === 'u' ? 'Заказ дороже маржи даже на минимуме — исключи ключ'
+        : code === 'u' ? 'Заказ дороже маржи даже на минимуме — <b>отключить</b> ключ'
         : 'На минимальной ставке в топ-5 не попадаем — поднимать ли, решает Коля';
       d.innerHTML = '<div class="top"><div class="k">' + esc(b[0]) + '</div><div class="chip">' + BID[code] + '</div></div>' +
         '<div class="nums"><div><b>' + (b[1] ? num(b[1]) : 'выкл') + '</b>ставка</div><div><b>' + (b[2] || '—') + '</b>место с рекламой</div>' +
@@ -321,10 +323,14 @@
   }
   function bar() {
     if (tab !== 'b') return;
-    show('apply', bids.some(function (b) { return b[6] === 'd' || b[6] === 'p'; }));
+    show('apply', bids.some(function (b) { return 'dpxoum'.indexOf(b[6]) >= 0; }));
     var n = Object.keys(bidOn).filter(function (k) { return bidOn[k]; }).length;
-    var ups = bids.some(function (b) { return b[6] === 'p' && bidOn[b[8]]; });
-    apply.textContent = n ? (ups ? 'Изменить ставки (' : 'Снизить ставки (') + n + ')' : 'Отметь, что изменить';
+    // счётчик по видам действий — чтобы «отключить» не ушло незамеченным рядом со «снизить»
+    var cnt = { d: 0, p: 0, off: 0, m: 0 };
+    bids.forEach(function (b) { if (bidOn[b[8]]) cnt['xou'.indexOf(b[6]) >= 0 ? 'off' : b[6]]++; });
+    var parts = [];
+    if (cnt.d) parts.push('⬇' + cnt.d); if (cnt.p) parts.push('⬆' + cnt.p); if (cnt.off) parts.push('✖' + cnt.off); if (cnt.m) parts.push('↩' + cnt.m);
+    apply.textContent = !n ? 'Отметь, что сделать' : (cnt.d === n ? 'Снизить ставки (' + n + ')' : 'Выполнить: ' + parts.join(' '));
     apply.disabled = !n;
   }
 
