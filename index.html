@@ -252,44 +252,53 @@
   // g = [запрос, заказы, клики] — свои подсказки, никаких кнопок действия
   function renderCards() {
     list.innerHTML = freshness(data.t);
-    var hd = data.hd;
-    if (hd) {
-      var h = document.createElement('p'); h.className = 'head';
-      // ДРР на экране ОДИН (вся реклама / все заказы товара) — он в строке ниже. Здесь рекламный заказ в сумах, без процента:
-      // hd[4] — сколько рекламы ушло на один рекламный заказ, hd[5] — маржа на штуку. Старый сервер их не шлёт.
-      h.innerHTML = 'Расход <b>' + num(hd[0]) + '</b> сум · ' + hd[1] + ' зак. с рекламы' +
-        (hd[4] != null ? ' · <b' + (hd[5] != null && hd[4] > hd[5] ? ' style="color:#d64545"' : '') + '>' + num(hd[4]) + '</b> сум рекламы на заказ' +
-          (hd[5] != null ? ' при марже ' + num(hd[5]) : '') : '');
-      list.appendChild(h);
-    }
-    // Три числа стратегии «органический топ-10, общий ДРР ≤5%»:
-    // ph = [общий ДРР, доля рекламы в заказах, лучшее органическое место, в топ-10, измерено, скрыто рекламой]
-    var ph = data.ph;
-    if (ph) {
-      var s2 = document.createElement('p'); s2.className = 'head';
-      // ph[6..9] — склеенная карточка (несколько вариантов): число вариантов, общий ДРР и доля рекламы по карточке целиком,
-      // флаг «рекламных заказов больше, чем продаж варианта». Старый сервер их не шлёт — тогда всё как раньше.
-      var glued = ph[6] > 1 && ph[7] != null, cmp = glued ? ph[7] : ph[0];
-      var good = cmp != null && cmp <= 5, col = cmp == null ? 'inherit' : good ? 'var(--ok)' : '#d9a400';
-      var lim = (data.hd || [])[3], over = cmp != null && lim != null && cmp > lim;
-      if (over) col = '#d64545';
-      // ph[10] — процент выкупа (ph[11] = 1 — взят по магазину, своих заказов мало), ph[12]/ph[13] — ДРР без учёта выкупа.
-      // Николай 21.09: ДРР = реклама / (заказы × % выкупа); отдельно — выкуп, ДРР карточки и ДРР склейки. Старый сервер шлёт короткий ph.
-      var bo = ph[10] != null, raw = glued ? ph[13] : ph[12];
-      s2.innerHTML = (glued
-          ? 'ДРР склейки <b style="color:' + col + '">' + ph[7] + '%</b> · ДРР карточки ' + (ph[0] == null ? 'н/д' : ph[0] + '%')
-          : 'ДРР <b style="color:' + col + '">' + (ph[0] == null ? 'н/д' : ph[0] + '%') + '</b>') +
-        (bo ? ' · выкуп <b>' + ph[10] + '%</b>' + (ph[11] ? ' <span style="color:var(--hint)">(по магазину)</span>' : '') : '') +
-        '<br>цель 5%' + (lim != null ? ' · предел ' + lim + '%' : '') +
-        '<br><span style="color:var(--hint)">ДРР = реклама / (заказы ' + (glued ? 'карточки' : 'товара') + (bo ? ' × выкуп' : '') + ') за 14 дней' +
-          (bo && raw != null ? '; без выкупа было бы ' + raw + '%' : '') + (lim != null ? '; предел — маржа в % цены' : '') + '</span><br>' +
-        (glued && ph[9] ? 'Рекламных заказов больше, чем продаж этого варианта — покупатели берут соседние; по карточке реклама даёт <b>' + Math.round(ph[8]) + '%</b> заказов'
-          : ph[1] != null ? 'Реклама даёт <b>' + Math.round(ph[1]) + '%</b> заказов' + (glued && ph[8] != null ? ' (по карточке ' + Math.round(ph[8]) + '%)' : '') : '') +
-        '<br>Органика: ' + (ph[2] ? 'лучшее место <b>' + ph[2] + '-е</b>, в топ-10: ' + ph[3] + ' из ' + ph[4] : 'не видно') +
-        (ph[5] ? ' <span style="color:var(--hint)">· под рекламой скрыто ' + ph[5] + '</span>' : '');
-      list.appendChild(s2);
+    var hd = data.hd, ph = data.ph;
+    // Шапка «Рекомендаций» — плитки чисел (Николай 21.09: глаз не находит главное число
+    // среди 5-6 строк текста). Одна мысль на плитку, порог/цель подписью под числом,
+    // весь разбор формул — под раскрытием «как считается». Плитки и details — только
+    // если есть что показывать (hd/ph могут отсутствовать у старого сервера).
+    if (hd || ph) {
+      var glued = ph && ph[6] > 1 && ph[7] != null;
+      var cmp = ph ? (glued ? ph[7] : ph[0]) : null;
+      var lim = (hd || [])[3];
+      var drrCol = cmp == null ? 'var(--fg)' : (lim != null && cmp > lim) ? '#d64545' : cmp <= 5 ? 'var(--ok)' : '#d9a400';
+      var bo = ph && ph[10] != null;
+      var tiles = document.createElement('div'); tiles.className = 'nums';
+      tiles.innerHTML =
+        '<div><b>' + num((hd || [])[0] || 0) + '</b>расход</div>' +
+        (cmp != null ? '<div><b style="color:' + drrCol + '">' + cmp + '%</b>' + (glued ? 'ДРР склейки' : 'ДРР') +
+          '<div style="font-size:10px;margin-top:1px">цель 5' + (lim != null ? ' · предел ' + lim : '') + '</div></div>' : '') +
+        (bo ? '<div><b>' + ph[10] + '%</b>выкуп</div>' : '') +
+        (hd && hd[4] != null ? '<div><b' + (hd[5] != null && hd[4] > hd[5] ? ' style="color:#d64545"' : '') + '>' + num(hd[4]) + '</b>реклама/заказ' +
+          (hd[5] != null ? '<div style="font-size:10px;margin-top:1px">маржа ' + num(hd[5]) + '</div>' : '') + '</div>' : '');
+      list.appendChild(tiles);
+      if (glued && ph[0] != null) {
+        var sub = document.createElement('p'); sub.style.cssText = 'font-size:12px;color:var(--hint);margin:2px 0 8px';
+        sub.textContent = 'карточки ' + ph[0] + '%';
+        list.appendChild(sub);
+      }
+      // Органика — одной строкой-чипами (Николай 21.09: убрать воду, не информацию).
+      if (ph && ph[2]) {
+        var org = document.createElement('p'); org.className = 'head'; org.style.margin = '0 0 8px';
+        org.innerHTML = 'лучшее <b>' + ph[2] + '-е</b> · в топ-10: ' + ph[3] + ' из ' + ph[4] +
+          (ph[5] ? ' · скрыто рекламой ' + ph[5] : '');
+        list.appendChild(org);
+      }
+      // Разбор формул и точные проценты — по тапу, не с первого экрана.
+      var det = document.createElement('details'); det.style.cssText = 'margin:0 0 12px;font-size:13px;color:var(--hint)';
+      var raw = ph ? (glued ? ph[13] : ph[12]) : null;
+      det.innerHTML = '<summary style="cursor:pointer;font-weight:600">как считается</summary><div style="margin-top:6px;line-height:1.5">' +
+        (hd ? 'Расход <b>' + num(hd[0]) + '</b> сум · ' + hd[1] + ' зак. с рекламы<br>' : '') +
+        (ph ? 'ДРР = реклама / (заказы ' + (glued ? 'карточки' : 'товара') + (bo ? ' × выкуп' : '') + ') за 14 дней' +
+          (bo && raw != null ? '; без выкупа было бы ' + raw + '%' : '') + (lim != null ? '; предел — маржа в % цены' : '') + '<br>' +
+          (glued ? 'ДРР карточки ' + (ph[0] == null ? 'н/д' : ph[0] + '%') + '<br>' : '') +
+          (glued && ph[9] ? 'Рекламных заказов больше, чем продаж этого варианта — покупатели берут соседние; по карточке реклама даёт ' + Math.round(ph[8]) + '% заказов'
+            : ph[1] != null ? 'Реклама даёт ' + Math.round(ph[1]) + '% заказов' + (glued && ph[8] != null ? ' (по карточке ' + Math.round(ph[8]) + '%)' : '') : '') : '') +
+        '</div>';
+      list.appendChild(det);
     }
     // Репрайсер цены: приложение только ПРОСИТ — включение подтверждается кнопкой в чате с Улей, остановка сразу.
+    // Правило (3-4 строки одинакового текста в каждой кампании) — под раскрытием «как работает».
     var rp = data.rp;
     if (rp) {
       var rpOn = rp.st === 'on' || rp.st === 'paused';
@@ -303,10 +312,11 @@
       rc.innerHTML = '<div class="top"><div class="k">💲 Репрайсер цены</div><div class="chip">' + esc(rpChip) + '</div></div>' +
         '<div class="do" style="margin-top:8px;font-weight:400">' + (prices ? 'Цена: ' + prices + ' сум' : 'Цены появятся после утреннего тика (08:25)') +
           (rp.avg != null ? ' · продажи ' + String(rp.avg).replace('.', ',') + ' в день' : '') + '</div>' +
-        '<div class="do" style="margin-top:6px;font-weight:400;color:var(--hint)">+1% раз в 4 дня. Упали продажи больше чем на 30% — верну цену, остановлюсь и позову Вику. Потолок +20%. В акции Uzum цену менять нельзя — жду конца акции и трёх дней без неё</div>' +
         (rp.why ? '<div class="do" style="margin-top:6px;font-weight:400">' + esc(rp.why) + '</div>' : '') +
         (rp.promo ? '<div class="do" style="margin-top:6px;font-weight:400;color:#d9a400">' + esc(rp.promo) + '</div>' : '') +
-        (rp.next ? '<div class="do" style="margin-top:6px;font-weight:400;color:var(--hint)">Решение ' + esc(rp.next) + '</div>' : '');
+        (rp.next ? '<div class="do" style="margin-top:6px;font-weight:400;color:var(--hint)">Решение ' + esc(rp.next) + '</div>' : '') +
+        '<details style="margin-top:6px;font-size:13px;color:var(--hint)"><summary style="cursor:pointer;font-weight:600">как работает</summary>' +
+        '<div style="margin-top:4px;line-height:1.5">+1% раз в 4 дня. Упали продажи больше чем на 30% — верну цену, остановлюсь и позову Вику. Потолок +20%. В акции Uzum цену менять нельзя — жду конца акции и трёх дней без неё</div></details>';
       if (rp.st !== 'na') {
         var rpBtn = document.createElement('button');
         rpBtn.style.cssText = 'margin-top:10px;width:100%;padding:11px;border:0;border-radius:10px;font-weight:600;font-size:15px;background:' +
@@ -356,14 +366,21 @@
     if (grow.length) {
       var gh = document.createElement('h2'); gh.textContent = 'Растить'; list.appendChild(gh);
       // g: [запрос, заказы, клики, кластер-родитель, группа товара (0 — старый сервер, галки нет), ставка родителя, № в пачке]
-      var canAny = false;
+      // Фраза «завести ключом на минимальной ставке» одинакова у каждой карточки — вынесена
+      // один раз сюда (Николай 21.09: повторяющийся текст группы — в заголовок группы).
+      var canAny = grow.some(function (g) { return !!g[4] && g[6] != null; });
+      if (canAny) {
+        var ghint = document.createElement('p'); ghint.style.cssText = 'font-size:13px;color:var(--hint);margin:-4px 0 8px';
+        ghint.textContent = 'Отметь запрос — заведу отдельным ключом на минимальной ставке 9 500';
+        list.appendChild(ghint);
+      }
       grow.forEach(function (g) {
-        var canAdd = !!g[4] && g[6] != null; canAny = canAny || canAdd;
+        var canAdd = !!g[4] && g[6] != null;
         var d = document.createElement('div'); d.className = 'card grow';
         d.innerHTML = '<div class="top"><div class="k">' + esc(g[0]) + '</div></div>' +
           '<div class="n">' + g[1] + ' зак за 7 дней · ' + g[2] + ' кликов' + (g[3] ? ' · внутри кластера «' + esc(g[3]) + '»' : '') + '</div>' +
           (canAdd
-            ? '<div class="row2"><div class="box"></div><div class="do">Завести отдельным ключом на минимальной ставке 9 500' + (g[5] ? ' (у «' + esc(g[3]) + '» сейчас ' + num(g[5]) + ')' : '') + '</div></div>'
+            ? '<div class="row2"><div class="box"></div><div class="do">Завести ключом' + (g[5] ? ' (у «' + esc(g[3]) + '» сейчас ' + num(g[5]) + ')' : '') + '</div></div>'
             : '<div class="do">Хорошо продаёт — можно выделить отдельным ключом</div>');
         if (canAdd) {
           var row = d.querySelector('.row2'), box = d.querySelector('.box');
@@ -385,6 +402,20 @@
 
   // ---- вкладка «Ставки»: s = [ключ, ставка, бустовое место, органическое место, заказы 7 дн, расход, совет, значение, № в пачке]
   var BID = { x: 'Мертвяк', n: 'Ещё не проверен', f: 'Выключен', d: 'Снизить', p: 'Поднять', o: 'Можно отключать', m: 'Вернуть ключ', c: 'Ключ закрыт', u: 'Не окупается', t: 'Минимум не тянет', w: 'Реклама не показывается' };
+  // Причины советов — те же у многих карточек подряд (особенно «w»). Короткая строка в
+  // карточке — глагол+число, полная причина уходит под общее раскрытие «почему» на вкладке
+  // (Николай 21.09: повторяющийся текст — не по карточке, а один раз).
+  var BID_WHY = {
+    x: 'Неделю и больше стоял в топе, показы были, заказов нет.',
+    n: 'Показов почти нет — ключ ещё не показал себя, отключать рано.',
+    f: 'Ключ выключен. Места без рекламы по нему не меряю — решать тебе.',
+    o: 'На минимуме держим топ-5 — можно отключать, органику проверю сама.',
+    m: 'Без рекламы упали ниже 10-го.',
+    c: 'Органика держит топ-10 без рекламы — цель достигнута.',
+    u: 'Заказ дороже маржи даже на минимуме.',
+    w: 'Неделю рекламы нет ни в одном замере выдачи: либо не наша категория, либо ставку перебивают. Ключ с минимальной ставкой — скорее перебивают. Проверь запрос глазами, не убирай вслепую, если есть заказы.',
+    t: 'На минимальной ставке в топ-5 не попадаем — поднимать ли, решает Коля.'
+  };
   // ДРР ключа за 7 дней против предела кампании (hd[3] — маржа в % цены): выше предела — ключ работает в минус
   function drrLine(b) {
     var lim = (data.hd || [])[3], d = b[9];
@@ -420,24 +451,26 @@
       var code = BID[b[6]] ? b[6] : 't', d = document.createElement('div');
       d.className = 'bid b-' + code;
       var pick = 'dpxoumf'.indexOf(code) >= 0;      // действия с галкой: ставка вниз/вверх, отключить (x, o, u), вернуть (m)
-      var what = code === 'd' ? 'Снизить ставку до <b>' + num(b[7]) + '</b>'
-        : code === 'p' ? 'Не в топ-5, до потолка есть запас — поднять до <b>' + num(b[7]) + '</b>'
-        : code === 'x' ? 'Неделю и больше стоял в топе, показы были, заказов нет — <b>отключить</b>'
-        : code === 'n' ? 'Показов почти нет — ключ ещё не показал себя. Отключать рано'
-        : code === 'f' ? 'Ключ выключен. Места без рекламы по нему не меряю — решать тебе: <b>вернуть</b> на ставке <b>' + num(b[7] || 9500) + '</b>'
-        : code === 'o' ? 'На минимуме держим топ-5 — <b>отключить</b> ключ, органику проверю сама'
-        : code === 'm' ? 'Без рекламы упали ниже 10-го — <b>вернуть</b> ключ на ставке <b>' + num(b[7] || 9500) + '</b>'
-        : code === 'c' ? 'Органика держит топ-10 без рекламы — цель достигнута'
-        : code === 'u' ? 'Заказ дороже маржи даже на минимуме — <b>отключить</b> ключ'
-        : code === 'w' ? (b[1] && b[1] <= 9600
-            ? 'Неделю рекламы нет ни в одном замере выдачи, ставка минимальная — скорее <b>перебивают ставку</b>, чем категория. Подними ставку или убери ключ'
-            : 'Неделю рекламы нет ни в одном замере выдачи: похоже, Uzum не крутит рекламу по этому запросу (<b>не наша категория</b>) либо ставку перебивают. Проверь запрос глазами' + (b[4] ? ' — за неделю ' + b[4] + ' зак., не убирать вслепую' : ' или убери ключ'))
-        : 'На минимальной ставке в топ-5 не попадаем — поднимать ли, решает Коля';
+      // Короткая строка — глагол + число, без причины (причина в <details> ниже, общая на код).
+      var what = code === 'd' ? 'Снизить до <b>' + num(b[7]) + '</b>'
+        : code === 'p' ? 'Поднять до <b>' + num(b[7]) + '</b>'
+        : code === 'x' ? '<b>Отключить</b>: заказов нет'
+        : code === 'n' ? 'Отключать рано'
+        : code === 'f' ? '<b>Вернуть</b> на ставке <b>' + num(b[7] || 9500) + '</b>'
+        : code === 'o' ? '<b>Отключить</b>: топ-5 держится сам'
+        : code === 'm' ? '<b>Вернуть</b> на ставке <b>' + num(b[7] || 9500) + '</b>'
+        : code === 'c' ? 'Цель достигнута'
+        : code === 'u' ? '<b>Отключить</b>: дороже маржи'
+        : code === 'w' ? (b[1] && b[1] <= 9600 ? 'Перебивают ставку — поднять или убрать' : 'Не показывается — проверить запрос')
+        : 'Решает Коля';
+      var whyText = BID_WHY[code] || '';
       d.innerHTML = '<div class="top"><div class="k">' + esc(b[0]) + '</div><div class="chip">' + BID[code] + '</div></div>' +
         '<div class="nums"><div><b>' + (b[1] ? num(b[1]) : 'выкл') + '</b>ставка</div><div><b>' + (b[2] || '—') + '</b>место с рекламой</div>' +
         '<div><b>' + (b[3] || '—') + '</b>без рекламы</div><div><b>' + b[4] + '</b>зак · ' + num(b[5]) + '</div></div>' +
         drrLine(b) +
-        (pick ? '<div class="row2"><div class="box"></div><div class="do">' + what + '</div></div>' : '<div class="do" style="margin-top:8px">' + what + '</div>');
+        (pick ? '<div class="row2"><div class="box"></div><div class="do">' + what + '</div></div>' : '<div class="do" style="margin-top:8px">' + what + '</div>') +
+        (whyText ? '<details style="margin-top:6px;font-size:12px;color:var(--hint)"><summary style="cursor:pointer">почему</summary><div style="margin-top:4px;line-height:1.4">' + esc(whyText) +
+          (code === 'w' && b[4] ? ' За неделю ' + b[4] + ' зак.' : '') + '</div></details>' : '');
       if (pick) {
         var row = d.querySelector('.row2'), box = d.querySelector('.box');
         var paint = function () { box.textContent = bidOn[b[8]] ? '✓' : ''; box.style.background = bidOn[b[8]] ? 'var(--ok)' : ''; box.style.borderColor = bidOn[b[8]] ? 'var(--ok)' : ''; box.style.color = '#fff'; };
@@ -476,7 +509,7 @@
   function paintGrowBtn() {
     var b = document.getElementById('growApply'); if (!b) return;
     var n = Object.keys(growOn).filter(function (k) { return growOn[k]; }).length;
-    b.textContent = n ? 'Завести ключом (' + n + ') — подтвержу в чате' : 'Отметь запрос выше';
+    b.textContent = n ? 'Завести (' + n + ') — подтверждение в чате' : 'Отметь запрос выше';
     b.disabled = !n; b.style.opacity = n ? '1' : '.5';
   }
   function bar() {
