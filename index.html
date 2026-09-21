@@ -55,15 +55,15 @@
   .bid .top { display:flex; justify-content:space-between; align-items:flex-start; gap:8px; }
   .bid .k { font-weight:600; min-width:0; overflow-wrap:anywhere; }
   .bid .do { font-size:14px; font-weight:600; }
-  .bid .row2 { display:flex; align-items:center; gap:12px; margin-top:8px; user-select:none; }
+  .bid .row2, .grow .row2 { display:flex; align-items:center; gap:12px; margin-top:8px; user-select:none; }
   .rf { color:inherit; font-weight:700; text-decoration:underline; white-space:nowrap; }
   .stale { background:#d9a400; color:#1b1b1b; border-radius:10px; padding:10px 12px; margin:0 0 10px; font-weight:600; font-size:14px; }
   #toast { position:fixed; left:12px; right:12px; bottom:calc(78px + env(safe-area-inset-bottom,0px)); border-radius:10px; padding:10px 12px; font-size:14px; font-weight:600; display:none; z-index:5; }
   #toast.ok { background:var(--ok); color:#fff; } #toast.err { background:#d64545; color:#fff; }
   #toast button { flex:none; width:auto; display:inline; background:transparent; color:inherit; text-decoration:underline; padding:0; margin-left:8px; font-size:14px; font-weight:700; }
-  .bid.b-m, .bid.b-u, .bid.b-x { border-left-color:#d64545; } .bid.b-d { border-left-color:#e67e22; } .bid.b-n, .bid.b-f { border-left-color:#8a8f98; } .bid.b-o, .bid.b-c { border-left-color:var(--ok); } .bid.b-t { border-left-color:#d9a400; } .bid.b-p { border-left-color:var(--btn); }
+  .bid.b-m, .bid.b-u, .bid.b-x { border-left-color:#d64545; } .bid.b-d { border-left-color:#e67e22; } .bid.b-n, .bid.b-f { border-left-color:#8a8f98; } .bid.b-o, .bid.b-c { border-left-color:var(--ok); } .bid.b-t, .bid.b-w { border-left-color:#d9a400; } .bid.b-p { border-left-color:var(--btn); }
   .bid .chip { background:#8a8f98; } .bid.b-m .chip, .bid.b-u .chip, .bid.b-x .chip { background:#d64545; } .bid.b-d .chip { background:#e67e22; }
-  .bid.b-o .chip, .bid.b-c .chip { background:var(--ok); } .bid.b-t .chip { background:#d9a400; } .bid.b-p .chip { background:var(--btn); }
+  .bid.b-o .chip, .bid.b-c .chip { background:var(--ok); } .bid.b-t .chip, .bid.b-w .chip { background:#d9a400; } .bid.b-p .chip { background:var(--btn); }
   .nums { display:flex; gap:6px; margin-top:8px; }
   .nums div { flex:1; background:var(--bg); border-radius:9px; padding:6px 4px; text-align:center; font-size:12px; color:var(--hint); }
   .nums b { display:block; font-size:16px; color:var(--fg); }
@@ -158,7 +158,7 @@
     return Promise.resolve(d ? [JSON.parse(new TextDecoder().decode(bytes(d)))] : null);
   }
 
-  var all = [], data = null, items = [], cards = [], grow = [], bids = [], bidOn = {}, tab = 'w', seen = false;
+  var all = [], data = null, items = [], cards = [], grow = [], bids = [], bidOn = {}, growOn = {}, tab = 'w', seen = false;
   var VERD = { e: 'Дорого', z: 'Без заказов', r: 'Рано судить', n: 'Нет маржи', h: 'Держать' };
   var mode = 'link'; // 'server' — данные и действия через API; 'link' — запасной, как раньше (?z=/?d=, sendData)
 
@@ -237,7 +237,7 @@
     items = (data.i || []).map(function (x) { return { w: x[0], t: x[1], s: x[2], q: x[3], tier: x[4], on: !!x[5] }; });
     cards = data.k || [];
     grow = data.g || [];
-    bids = data.s || []; bidOn = {};
+    bids = data.s || []; bidOn = {}; growOn = {};
     tab = items.length ? 'w' : (cards.length ? 'r' : 'b'); seen = false;
     $('title').textContent = data.n || 'Минус-слова';
     show('bar', true);
@@ -264,10 +264,15 @@
     var ph = data.ph;
     if (ph) {
       var s2 = document.createElement('p'); s2.className = 'head';
-      var good = ph[0] != null && ph[0] <= 5;
-      s2.innerHTML = 'Общий ДРР <b style="color:' + (ph[0] == null ? 'inherit' : good ? 'var(--ok)' : '#d9a400') + '">' +
-        (ph[0] == null ? 'н/д' : ph[0] + '%') + '</b> при цели 5%' +
-        (ph[1] != null ? ' · реклама даёт <b>' + Math.round(ph[1]) + '%</b> заказов' : '') +
+      // ph[6..9] — склеенная карточка (несколько вариантов): число вариантов, общий ДРР и доля рекламы по карточке целиком,
+      // флаг «рекламных заказов больше, чем продаж варианта». Старый сервер их не шлёт — тогда всё как раньше.
+      var glued = ph[6] > 1 && ph[7] != null, cmp = glued ? ph[7] : ph[0];
+      var good = cmp != null && cmp <= 5, col = cmp == null ? 'inherit' : good ? 'var(--ok)' : '#d9a400';
+      s2.innerHTML = (glued
+          ? 'Общий ДРР ' + (ph[0] == null ? 'н/д' : ph[0] + '%') + ' по варианту · с переливами на другие варианты карточки <b style="color:' + col + '">' + ph[7] + '%</b> при цели 5%'
+          : 'Общий ДРР <b style="color:' + col + '">' + (ph[0] == null ? 'н/д' : ph[0] + '%') + '</b> при цели 5%') +
+        (glued && ph[9] ? ' · рекламных заказов больше, чем продаж этого варианта — покупатели берут соседние; по карточке реклама даёт <b>' + Math.round(ph[8]) + '%</b> заказов'
+          : ph[1] != null ? ' · реклама даёт <b>' + Math.round(ph[1]) + '%</b> заказов' + (glued && ph[8] != null ? ' (по карточке ' + Math.round(ph[8]) + '%)' : '') : '') +
         '<br>Органика: ' + (ph[2] ? 'лучшее место <b>' + ph[2] + '-е</b>, в топ-10: ' + ph[3] + ' из ' + ph[4] : 'не видно') +
         (ph[5] ? ' <span style="color:var(--hint)">· под рекламой скрыто ' + ph[5] + '</span>' : '');
       list.appendChild(s2);
@@ -308,18 +313,36 @@
     if (data.kr) { var m = document.createElement('div'); m.className = 'empty'; m.textContent = 'и ещё ' + data.kr + ' мелких кластеров'; list.appendChild(m); }
     if (grow.length) {
       var gh = document.createElement('h2'); gh.textContent = 'Растить'; list.appendChild(gh);
+      // g: [запрос, заказы, клики, кластер-родитель, группа товара (0 — старый сервер, галки нет), ставка родителя, № в пачке]
+      var canAny = false;
       grow.forEach(function (g) {
+        var canAdd = !!g[4] && g[6] != null; canAny = canAny || canAdd;
         var d = document.createElement('div'); d.className = 'card grow';
         d.innerHTML = '<div class="top"><div class="k">' + esc(g[0]) + '</div></div>' +
-          '<div class="n">' + g[1] + ' зак · ' + g[2] + ' кликов' + (g[3] ? ' · внутри кластера «' + esc(g[3]) + '»' : '') + '</div>' +
-          '<div class="do">Хорошо продаёт — можно выделить отдельным ключом</div>';
+          '<div class="n">' + g[1] + ' зак за 7 дней · ' + g[2] + ' кликов' + (g[3] ? ' · внутри кластера «' + esc(g[3]) + '»' : '') + '</div>' +
+          (canAdd
+            ? '<div class="row2"><div class="box"></div><div class="do">Завести отдельным ключом на минимальной ставке 9 500' + (g[5] ? ' (у «' + esc(g[3]) + '» сейчас ' + num(g[5]) + ')' : '') + '</div></div>'
+            : '<div class="do">Хорошо продаёт — можно выделить отдельным ключом</div>');
+        if (canAdd) {
+          var row = d.querySelector('.row2'), box = d.querySelector('.box');
+          var paint = function () { var on = growOn[g[6]]; box.textContent = on ? '✓' : ''; box.style.background = on ? 'var(--ok)' : ''; box.style.borderColor = on ? 'var(--ok)' : ''; box.style.color = '#fff'; };
+          row.onclick = function () { growOn[g[6]] = !growOn[g[6]]; tap(); paint(); paintGrowBtn(); };
+          paint();
+        }
         list.appendChild(d);
       });
+      if (canAny) {
+        var gBtn = document.createElement('button'); gBtn.id = 'growApply';
+        gBtn.style.cssText = 'margin:6px 0 12px;width:100%;padding:12px;border:0;border-radius:10px;font-weight:600;font-size:15px;background:var(--btn);color:var(--btnfg)';
+        gBtn.onclick = function () { send({ grow: Object.keys(growOn).filter(function (k) { return growOn[k]; }).map(Number) }); };
+        list.appendChild(gBtn);
+        paintGrowBtn();
+      }
     }
   }
 
   // ---- вкладка «Ставки»: s = [ключ, ставка, бустовое место, органическое место, заказы 7 дн, расход, совет, значение, № в пачке]
-  var BID = { x: 'Мертвяк', n: 'Ещё не проверен', f: 'Выключен', d: 'Снизить', p: 'Поднять', o: 'Можно отключать', m: 'Вернуть ключ', c: 'Ключ закрыт', u: 'Не окупается', t: 'Минимум не тянет' };
+  var BID = { x: 'Мертвяк', n: 'Ещё не проверен', f: 'Выключен', d: 'Снизить', p: 'Поднять', o: 'Можно отключать', m: 'Вернуть ключ', c: 'Ключ закрыт', u: 'Не окупается', t: 'Минимум не тянет', w: 'Реклама не показывается' };
   // ДРР ключа за 7 дней против предела кампании (hd[3] — маржа в % цены): выше предела — ключ работает в минус
   function drrLine(b) {
     var lim = (data.hd || [])[3], d = b[9];
@@ -364,6 +387,9 @@
         : code === 'm' ? 'Без рекламы упали ниже 10-го — <b>вернуть</b> ключ на ставке <b>' + num(b[7] || 9500) + '</b>'
         : code === 'c' ? 'Органика держит топ-10 без рекламы — цель достигнута'
         : code === 'u' ? 'Заказ дороже маржи даже на минимуме — <b>отключить</b> ключ'
+        : code === 'w' ? (b[1] && b[1] <= 9600
+            ? 'Неделю рекламы нет ни в одном замере выдачи, ставка минимальная — скорее <b>перебивают ставку</b>, чем категория. Подними ставку или убери ключ'
+            : 'Неделю рекламы нет ни в одном замере выдачи: похоже, Uzum не крутит рекламу по этому запросу (<b>не наша категория</b>) либо ставку перебивают. Проверь запрос глазами' + (b[4] ? ' — за неделю ' + b[4] + ' зак., не убирать вслепую' : ' или убери ключ'))
         : 'На минимальной ставке в топ-5 не попадаем — поднимать ли, решает Коля';
       d.innerHTML = '<div class="top"><div class="k">' + esc(b[0]) + '</div><div class="chip">' + BID[code] + '</div></div>' +
         '<div class="nums"><div><b>' + (b[1] ? num(b[1]) : 'выкл') + '</b>ставка</div><div><b>' + (b[2] || '—') + '</b>место с рекламой</div>' +
@@ -404,6 +430,12 @@
     }
     if (data.sr > 0) { var m = document.createElement('div'); m.className = 'empty'; m.textContent = 'ещё ' + data.sr + ' ключей — держим или мало данных'; list.appendChild(m); }
     bar();
+  }
+  function paintGrowBtn() {
+    var b = document.getElementById('growApply'); if (!b) return;
+    var n = Object.keys(growOn).filter(function (k) { return growOn[k]; }).length;
+    b.textContent = n ? 'Завести ключом (' + n + ') — подтвержу в чате' : 'Отметь запрос выше';
+    b.disabled = !n; b.style.opacity = n ? '1' : '.5';
   }
   function bar() {
     if (tab !== 'b') return;
