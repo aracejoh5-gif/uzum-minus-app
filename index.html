@@ -289,6 +289,34 @@
         (ph[5] ? ' <span style="color:var(--hint)">· под рекламой скрыто ' + ph[5] + '</span>' : '');
       list.appendChild(s2);
     }
+    // Репрайсер цены: приложение только ПРОСИТ — включение подтверждается кнопкой в чате с Улей, остановка сразу.
+    var rp = data.rp;
+    if (rp) {
+      var rpOn = rp.st === 'on' || rp.st === 'paused';
+      var rpChip = { off: 'Выключен', on: 'Работает', paused: 'Пауза', stopped: 'Остановлен', done: 'Выполнено', na: 'Недоступен' }[rp.st] || rp.st;
+      var rc = document.createElement('div');
+      rc.className = 'bid b-' + ({ on: 'c', paused: 't', na: 'n', stopped: 'u' }[rp.st] || 'f');
+      var prices = (rp.p || []).map(function (x, i) {
+        var st0 = rp.p0 && rp.p0[i] ? rp.p0[i][1] : null;
+        return num(x[1]) + (st0 && st0 !== x[1] ? ' <span style="color:var(--hint)">(старт ' + num(st0) + ', потолок ' + num(Math.floor(st0 * 1.2)) + ')</span>' : '');
+      }).join(' / ');
+      rc.innerHTML = '<div class="top"><div class="k">💲 Репрайсер цены</div><div class="chip">' + esc(rpChip) + '</div></div>' +
+        '<div class="do" style="margin-top:8px;font-weight:400">' + (prices ? 'Цена: ' + prices + ' сум' : 'Цены появятся после утреннего тика (08:25)') +
+          (rp.avg != null ? ' · продажи ' + String(rp.avg).replace('.', ',') + ' в день' : '') + '</div>' +
+        '<div class="do" style="margin-top:6px;font-weight:400;color:var(--hint)">+1% раз в 4 дня. Упали продажи больше чем на 30% — верну цену, остановлюсь и позову Вику. Потолок +20%. В акции Uzum цену менять нельзя — жду конца акции и трёх дней без неё</div>' +
+        (rp.why ? '<div class="do" style="margin-top:6px;font-weight:400">' + esc(rp.why) + '</div>' : '') +
+        (rp.promo ? '<div class="do" style="margin-top:6px;font-weight:400;color:#d9a400">' + esc(rp.promo) + '</div>' : '') +
+        (rp.next ? '<div class="do" style="margin-top:6px;font-weight:400;color:var(--hint)">Решение ' + esc(rp.next) + '</div>' : '');
+      if (rp.st !== 'na') {
+        var rpBtn = document.createElement('button');
+        rpBtn.style.cssText = 'margin-top:10px;width:100%;padding:11px;border:0;border-radius:10px;font-weight:600;font-size:15px;background:' +
+          (rpOn ? 'var(--line);color:var(--fg)' : 'var(--btn);color:var(--btnfg)');
+        rpBtn.textContent = rpOn ? 'Остановить репрайсер' : 'Включить репрайсер…';
+        rpBtn.onclick = function () { tap(); send({ repricer: !rpOn }); };
+        rc.appendChild(rpBtn);
+      }
+      list.appendChild(rc);
+    }
     // «Что сделать»: максимум три строки, по убыванию денег — ответ одним взглядом, без
     // чтения карточек (Николай, 18.09: «не словесным поносом»). Всё считается из того же payload.
     var acts = [];
@@ -581,7 +609,7 @@
     });
     function afterSend(o, forceRefresh) {
       apply.disabled = false; apply.textContent = prevText;
-      var needsRefresh = forceRefresh || o.cancel || o.checked;
+      var needsRefresh = forceRefresh || o.cancel || o.checked || o.repricer === false;   // остановка репрайсера исполняется сразу — перечитать состояние
       if (needsRefresh) refreshInPlace();
     }
   }
