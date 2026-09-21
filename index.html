@@ -77,7 +77,6 @@
   .s1 { border-left-color:#2481cc; } .s1 .chip { background:#2481cc; }
   .s0 { border-left-color:var(--ok); } .s0 .chip { background:var(--ok); }
   #back { display:none; color:var(--btn); font-weight:600; font-size:15px; padding:4px 0 8px; }
-  #zs { background:var(--card); color:var(--fg); }
 </style>
 </head>
 <body>
@@ -90,7 +89,6 @@
 <div id="bar">
   <button id="cancel">Отмена</button>
   <button id="apply">Применить</button>
-  <button id="zs" style="display:none">Что советует ZoomSelling</button>
   <button id="pause" style="display:none">⏸ Пауза</button>
 </div>
 <script>
@@ -267,7 +265,7 @@
       tiles.innerHTML =
         '<div><b>' + num((hd || [])[0] || 0) + '</b>расход</div>' +
         (cmp != null ? '<div><b style="color:' + drrCol + '">' + cmp + '%</b>' + (glued ? 'ДРР склейки' : 'ДРР') +
-          '<div style="font-size:10px;margin-top:1px">цель 5' + (lim != null ? ' · предел ' + lim : '') + '</div></div>' : '') +
+          '<div style="font-size:11px;margin-top:1px;white-space:nowrap">цель 5' + (lim != null ? ' · предел ' + String(lim).replace('.', ',') : '') + '</div></div>' : '') +
         (bo ? '<div><b>' + ph[10] + '%</b>выкуп</div>' : '') +
         (hd && hd[4] != null ? '<div><b' + (hd[5] != null && hd[4] > hd[5] ? ' style="color:#d64545"' : '') + '>' + num(hd[4]) + '</b>реклама/заказ' +
           (hd[5] != null ? '<div style="font-size:10px;margin-top:1px">маржа ' + num(hd[5]) + '</div>' : '') + '</div>' : '');
@@ -465,7 +463,7 @@
         : 'Решает Коля';
       var whyText = BID_WHY[code] || '';
       d.innerHTML = '<div class="top"><div class="k">' + esc(b[0]) + '</div><div class="chip">' + BID[code] + '</div></div>' +
-        '<div class="nums"><div><b>' + (b[1] ? num(b[1]) : 'выкл') + '</b>ставка</div><div><b>' + (b[2] || '—') + '</b>место с рекламой</div>' +
+        '<div class="nums"><div><b>' + (b[1] ? num(b[1]) : 'выкл') + '</b>ставка</div><div><b>' + (b[2] >= 99 ? 'нет' : (b[2] || '—')) + '</b>' + (b[2] >= 99 ? 'рекламы в выдаче' : 'место с рекламой') + '</div>' +
         '<div><b>' + (b[3] || '—') + '</b>без рекламы</div><div><b>' + b[4] + '</b>зак · ' + num(b[5]) + '</div></div>' +
         drrLine(b) +
         (pick ? '<div class="row2"><div class="box"></div><div class="do">' + what + '</div></div>' : '<div class="do" style="margin-top:8px">' + what + '</div>') +
@@ -535,7 +533,7 @@
     });
     if (tab === 'b') {
       [].forEach.call(document.querySelectorAll('#tabs div'), function (t) { t.className = t.getAttribute('data-t') === tab ? 'on' : ''; });
-      show('sub', false); show('cancel', false); show('apply', true); show('zs', false); show('pause', false);
+      show('sub', false); show('cancel', false); show('apply', true); show('pause', false);
       renderBids(); return;
     }
     [].forEach.call(document.querySelectorAll('#tabs div'), function (t) { t.className = t.getAttribute('data-t') === tab ? 'on' : ''; });
@@ -545,7 +543,7 @@
     // только когда кампания в целом за пределом ДРР; нет ДРР — когда есть «дорого».
     var hd = data.hd || [], over = hd[2] != null && hd[3] != null ? hd[2] > hd[3]
       : cards.some(function (c) { return c[4] === 'e'; });
-    show('zs', rec); show('pause', rec && over);
+    show('pause', rec && over);
     if (rec) { renderCards(); return; }
     list.innerHTML = freshness(data.t);
     [['c', 'Уверен — сними лишнее'], ['s', 'Сомневаюсь — отметь нужное']].forEach(function (g) {
@@ -648,7 +646,6 @@
   }
   // Пауза и справка только ПРОСЯТ бота: пауза исполняется кнопкой подтверждения в чате
   $('pause').onclick = function () { send({ pause: true }); };
-  $('zs').onclick = function () { send({ zs: true }); };
   apply.onclick = function () {
     if (tab === 'b') {       // ставки: шлём только номера строк — ключи и цифры бот берёт из своей базы
       send({ bids: Object.keys(bidOn).filter(function (k) { return bidOn[k]; }).map(Number) });
