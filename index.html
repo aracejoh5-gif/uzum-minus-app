@@ -183,7 +183,7 @@
   }
   // Первая попытка 15 с (холодная сборка на сервере 6–10 с), повторы по 12 с на других именах: дальше сервер отдаёт из кэша за миллисекунды,
   // так что долгий повтор = снова зависшая доставка, а не сервер. 'auth'/'http' не повторяем — это не сеть.
-  function fetchState() {
+  function fetchStateDirect() {
     var attempt = 0;
     function go() {
       var host = API_HOSTS[attempt % API_HOSTS.length], ms = attempt === 0 ? 15000 : 12000;
@@ -197,6 +197,51 @@
       });
     }
     return go();
+  }
+
+  // ---- состояние через GitHub Gist (22.09.2026, uzum-app-state-via-github.md): большие ответы сервера
+  // срезаются из РФ после ~16 КБ, GitHub грузится всегда. Сервер отдаёт маленькую ссылку+ключ (/api/state_ref),
+  // само тело — зашифрованный файл с GitHub. Любой сбой на пути (а)-(в) → тихо назад на старый /api/state.
+  function fetchRef(fresh) {
+    var ctl = new AbortController(), timer = setTimeout(function () { ctl.abort(); }, 20000);
+    var url = API + '/api/state_ref' + (fresh ? '?fresh=1' : '');
+    return fetch(url, { headers: { 'X-Tg-Init-Data': initData }, signal: ctl.signal })
+      .then(function (r) {
+        clearTimeout(timer);
+        if (r.status === 401) return Promise.reject('auth');
+        if (!r.ok) return Promise.reject('http');
+        return r.json();
+      }, function (e) { clearTimeout(timer); return Promise.reject(e && e.name === 'AbortError' ? 'timeout' : 'net'); });
+  }
+  function fetchGistBody(url) {
+    var ctl = new AbortController(), timer = setTimeout(function () { ctl.abort(); }, 20000);
+    return fetch(url, { signal: ctl.signal })                // без своих заголовков — CORS gist raw отдаёт *, свои заголовки его бы сломали
+      .then(function (r) { clearTimeout(timer); if (!r.ok) return Promise.reject('http'); return r.text(); },
+            function (e) { clearTimeout(timer); return Promise.reject(e && e.name === 'AbortError' ? 'timeout' : 'net'); });
+  }
+  function decryptState(b64, keyB64) {
+    var raw = bytes(b64), nonce = raw.slice(0, 12), ct = raw.slice(12);
+    return crypto.subtle.importKey('raw', bytes(keyB64), 'AES-GCM', false, ['decrypt'])
+      .then(function (key) { return crypto.subtle.decrypt({ name: 'AES-GCM', iv: nonce }, key, ct); })
+      .then(function (buf) { return JSON.parse(new TextDecoder().decode(buf)); });
+  }
+  function fetchStateViaGist(fresh) {
+    return fetchRef(fresh).then(function (ref) {
+      return fetchGistBody(ref.u).then(function (b64) { return decryptState(b64, ref.k); })
+        .then(function (o) {
+          var c = o.c || [];
+          c.forEach(function (x) { if (o.t && !x.t) x.t = o.t; });
+          return c;
+        });
+    });
+  }
+  // Главный путь: сервер публикует состояние в Gist → приложение читает его напрямую с GitHub. Сбой
+  // на любом шаге (ссылка сервера, GitHub, расшифровка) — тихо на старый прямой путь /api/state.
+  function fetchState(fresh) {
+    return fetchStateViaGist(fresh).catch(function () {
+      list.innerHTML = '<div class="empty">GitHub не ответил, пробую сервер…</div>';
+      return fetchStateDirect();
+    });
   }
 
   // 3 — ДРР кампании выше предела, 2 — есть «дорого» или «сливает» (w=1), 1 — есть слова, 0 — спокойно
@@ -613,7 +658,7 @@
     var curName = data && data.n, wasHome = !data, curTab = tab;
     var prevList = list.innerHTML;
     list.innerHTML = '<div class="empty">Обновляю…</div>';
-    fetchState().then(function (c) {
+    fetchState(true).then(function (c) {
       all = c || [];
       if (wasHome || all.length <= 1) { if (all.length === 1) open(0); else home(); return; }
       var idx = 0;
