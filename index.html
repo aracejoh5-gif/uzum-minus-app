@@ -711,7 +711,12 @@
     function afterSend(o, forceRefresh) {
       apply.disabled = false; apply.textContent = prevText;
       var needsRefresh = forceRefresh || o.cancel || o.checked || o.repricer === false;   // остановка репрайсера исполняется сразу — перечитать состояние
-      if (needsRefresh) refreshInPlace();
+      // Запись в кабинет делает бот ~5 с ПОСЛЕ ответа сервера (22.09: минус-слова Вики «не убрались» — данные перечитались за 3 с до
+      // конца записи). Ждём 8 с, потом свежие данные; «↻ Обновить» доступна, если бот задержался дольше.
+      if (needsRefresh && (o.checked || o.bids)) {
+        list.innerHTML = '<div class="empty">Записываю в кабинет…<br><span style="font-size:13px">обновлю список через несколько секунд</span></div>';
+        setTimeout(refreshInPlace, 8000);
+      } else if (needsRefresh) refreshInPlace();
     }
   }
   // Пауза и справка только ПРОСЯТ бота: пауза исполняется кнопкой подтверждения в чате
