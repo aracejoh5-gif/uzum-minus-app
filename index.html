@@ -95,7 +95,7 @@
 (function () {
   var tg = window.Telegram && Telegram.WebApp;
   if (tg) { tg.ready(); tg.expand(); }
-  var API = 'https://165-22-76-154.sslip.io'; // сменить при переезде на свой домен
+  var API = 'https://ulya.dacutavio.ru'; // 22.09.2026: свой домен за Cloudflare — прямой канал из РФ до IP хостинга режет ответ после ~16 КБ; старый https://165-22-76-154.sslip.io жив как запасной
   var initData = (tg && tg.initData) || '';
   function theme() {
     if (!tg || !tg.themeParams) return;
