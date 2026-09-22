@@ -160,6 +160,7 @@
   }
 
   var all = [], data = null, items = [], cards = [], grow = [], bids = [], bidOn = {}, growOn = {}, tab = 'w', seen = false;
+  var rm = [], rmOn = {};   // «Убрано из показов»: rm — [слово, перевод, дата, кто], rmOn — отмеченные на возврат
   var VERD = { e: 'Дорого', z: 'Без заказов', r: 'Рано судить', n: 'Нет маржи', h: 'Держать' };
   var mode = 'link'; // 'server' — данные и действия через API; 'link' — запасной, как раньше (?z=/?d=, sendData)
 
@@ -303,6 +304,7 @@
     cards = data.k || [];
     grow = data.g || [];
     bids = data.s || []; bidOn = {}; growOn = {};
+    rm = data.rm || []; rmOn = {};
     tab = items.length ? 'w' : (cards.length ? 'r' : 'b'); seen = false;
     $('title').textContent = data.n || 'Минус-слова';
     show('bar', true);
@@ -641,8 +643,30 @@
       d.onclick = function () { seen = !seen; tap(); render(); };
       list.appendChild(d);
     }
-    apply.textContent = n ? 'Применить (' + n + ')' : (seen ? 'Сохранить' : 'Ничего не отмечено');
-    apply.disabled = !n && !seen;
+    if (rm.length) {
+      var rmBox = document.createElement('details'); rmBox.style.cssText = 'margin:16px 0 0';
+      rmBox.innerHTML = '<summary style="cursor:pointer;font-weight:600;padding:6px 0">Убрано из показов (' + rm.length + ')</summary>';
+      rm.forEach(function (r, i) {
+        var word = r[0], tr = r[1], at = r[2], who = r[3];
+        var sub = at ? (at.slice(8, 10) + '.' + at.slice(5, 7) + (who ? ' · ' + esc(who) : '')) : 'руками в кабинете';
+        var d = document.createElement('div'); d.className = 'row' + (rmOn[i] ? ' on' : '');
+        d.style.marginTop = '8px';
+        d.innerHTML = '<div class="box">' + (rmOn[i] ? '✓' : '') + '</div>' +
+          '<div style="min-width:0;flex:1"><div class="w">' + esc(word) + ' <span class="t">— ' + esc(tr || '?') + '</span></div>' +
+          '<div class="s">' + esc(sub) + '</div></div>';
+        d.onclick = function () { rmOn[i] = !rmOn[i]; tap(); render(); };
+        rmBox.appendChild(d);
+      });
+      list.appendChild(rmBox);
+    }
+    var rmN = Object.keys(rmOn).filter(function (k) { return rmOn[k]; }).length;
+    if (rmN) {
+      apply.textContent = 'Вернуть в показы (' + rmN + ')';
+      apply.disabled = false;
+    } else {
+      apply.textContent = n ? 'Применить (' + n + ')' : (seen ? 'Сохранить' : 'Ничего не отмечено');
+      apply.disabled = !n && !seen;
+    }
   }
 
   [].forEach.call(document.querySelectorAll('#tabs div'), function (t) {
@@ -710,10 +734,10 @@
     });
     function afterSend(o, forceRefresh) {
       apply.disabled = false; apply.textContent = prevText;
-      var needsRefresh = forceRefresh || o.cancel || o.checked || o.repricer === false;   // остановка репрайсера исполняется сразу — перечитать состояние
+      var needsRefresh = forceRefresh || o.cancel || o.checked || o.unminus || o.repricer === false;   // остановка репрайсера исполняется сразу — перечитать состояние
       // Запись в кабинет делает бот ~5 с ПОСЛЕ ответа сервера (22.09: минус-слова Вики «не убрались» — данные перечитались за 3 с до
       // конца записи). Ждём 8 с, потом свежие данные; «↻ Обновить» доступна, если бот задержался дольше.
-      if (needsRefresh && (o.checked || o.bids)) {
+      if (needsRefresh && (o.checked || o.bids || o.unminus)) {
         list.innerHTML = '<div class="empty">Записываю в кабинет…<br><span style="font-size:13px">обновлю список через несколько секунд</span></div>';
         setTimeout(refreshInPlace, 8000);
       } else if (needsRefresh) refreshInPlace();
@@ -726,6 +750,8 @@
       send({ bids: Object.keys(bidOn).filter(function (k) { return bidOn[k]; }).map(Number) });
       return;
     }
+    var rmWords = Object.keys(rmOn).filter(function (k) { return rmOn[k]; }).map(function (i) { return rm[i][0]; });
+    if (rmWords.length) { send({ unminus: rmWords }); return; }
     var checked = items.map(function (it, i) { return it.on ? i : -1; }).filter(function (i) { return i >= 0; });
     send({ checked: checked, seen: seen && checked.length < items.length });
   };
