@@ -266,7 +266,8 @@
         '<div><b>' + num((hd || [])[0] || 0) + '</b>расход</div>' +
         (cmp != null ? '<div><b style="color:' + drrCol + '">' + cmp + '%</b>' + (glued ? 'ДРР склейки' : 'ДРР') +
           '<div style="font-size:11px;margin-top:1px;white-space:nowrap">цель 5' + (lim != null ? ' · предел ' + String(lim).replace('.', ',') : '') + '</div></div>' : '') +
-        (bo ? '<div><b>' + ph[10] + '%</b>выкуп</div>' : '') +
+        (bo ? '<div><b>' + ph[10] + '%</b>выкуп' +
+          (ph[11] != null ? '<div style="font-size:10px;margin-top:1px">' + (['по товару', 'по магазину', 'из кабинета'][ph[11]] || '') + '</div>' : '') + '</div>' : '') +
         (hd && hd[4] != null ? '<div><b' + (hd[5] != null && hd[4] > hd[5] ? ' style="color:#d64545"' : '') + '>' + num(hd[4]) + '</b>реклама/заказ' +
           (hd[5] != null ? '<div style="font-size:10px;margin-top:1px">маржа ' + num(hd[5]) + '</div>' : '') + '</div>' : '');
       list.appendChild(tiles);
