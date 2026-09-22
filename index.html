@@ -96,6 +96,9 @@
   var tg = window.Telegram && Telegram.WebApp;
   if (tg) { tg.ready(); tg.expand(); }
   var API = 'https://ulya.dacutavio.ru'; // 22.09.2026: свой домен за Cloudflare — прямой канал из РФ до IP хостинга режет ответ после ~16 КБ; старый https://165-22-76-154.sslip.io жив как запасной
+  // Через Cloudflare из РФ часть соединений замирает после первых КБ (22.09: 24 КБ висит, 400 КБ проходит, через минуту наоборот).
+  // Зависшее соединение браузер переиспользует, поэтому повтор идёт на ДРУГОЕ имя — это новое соединение и новый адрес Cloudflare.
+  var API_HOSTS = ['https://ulya.dacutavio.ru', 'https://ulya2.dacutavio.ru', 'https://ulya3.dacutavio.ru'];
   var initData = (tg && tg.initData) || '';
   function theme() {
     if (!tg || !tg.themeParams) return;
@@ -163,20 +166,37 @@
   // ---- режим сервера: авторизация подписью Telegram, без своих токенов/cookies
   // Таймауты: состояние на холодном кэше сервер собирает ~6–10 с (7 кампаний, перевод новых слов) — даём 25 с;
   // действие отвечает быстро, но шлёт сообщение в Telegram — 15 с. Дальше кэш сервера (90 с) отдаёт мгновенно.
-  function fetchState() {
-    var ctl = new AbortController(), timer = setTimeout(function () { ctl.abort(); }, 25000);
-    return fetch(API + '/api/state', { headers: { 'X-Tg-Init-Data': initData }, signal: ctl.signal })
+  function fetchStateOnce(host, ms) {
+    var ctl = new AbortController(), timer = setTimeout(function () { ctl.abort(); }, ms);
+    return fetch(host + '/api/state', { headers: { 'X-Tg-Init-Data': initData }, signal: ctl.signal })
       .then(function (r) {
-        clearTimeout(timer);
         if (r.status === 401) return Promise.reject('auth');
         if (!r.ok) return Promise.reject('http');
-        return r.json();
+        return r.json();                                   // тело тоже под таймером: зависает именно тело, не заголовки
       })
       .then(function (o) {
+        clearTimeout(timer);
         var c = o.c || [];
         c.forEach(function (x) { if (o.t && !x.t) x.t = o.t; });
         return c;
-      }, function (e) { clearTimeout(timer); return Promise.reject(e === 'auth' ? 'auth' : (e && e.name === 'AbortError' ? 'timeout' : 'net')); });
+      }, function (e) { clearTimeout(timer); return Promise.reject(e === 'auth' ? 'auth' : e === 'http' ? 'http' : (e && e.name === 'AbortError' ? 'timeout' : 'net')); });
+  }
+  // Первая попытка 15 с (холодная сборка на сервере 6–10 с), повторы по 12 с на других именах: дальше сервер отдаёт из кэша за миллисекунды,
+  // так что долгий повтор = снова зависшая доставка, а не сервер. 'auth'/'http' не повторяем — это не сеть.
+  function fetchState() {
+    var attempt = 0;
+    function go() {
+      var host = API_HOSTS[attempt % API_HOSTS.length], ms = attempt === 0 ? 15000 : 12000;
+      attempt += 1;
+      return fetchStateOnce(host, ms).catch(function (e) {
+        if ((e === 'timeout' || e === 'net') && attempt < API_HOSTS.length) {
+          list.innerHTML = '<div class="empty">Связь застряла, пробую ещё раз (' + (attempt + 1) + ' из ' + API_HOSTS.length + ')…</div>';
+          return go();
+        }
+        return Promise.reject(e);
+      });
+    }
+    return go();
   }
 
   // 3 — ДРР кампании выше предела, 2 — есть «дорого» или «сливает» (w=1), 1 — есть слова, 0 — спокойно
