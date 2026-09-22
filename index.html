@@ -214,7 +214,9 @@
       }, function (e) { clearTimeout(timer); return Promise.reject(e && e.name === 'AbortError' ? 'timeout' : 'net'); });
   }
   function fetchGistBody(url) {
-    var ctl = new AbortController(), timer = setTimeout(function () { ctl.abort(); }, 20000);
+    // 45 с, не 20: у Вики 22.09 файл 150 КБ с GitHub не успевал за 20 с, хотя в Safari та же ссылка открывалась — сеть медленная, не мёртвая.
+    list.innerHTML = '<div class="empty">Скачиваю данные с GitHub…<br><span style="font-size:13px">до 45 секунд на медленной сети</span></div>';
+    var ctl = new AbortController(), timer = setTimeout(function () { ctl.abort(); }, 45000);
     return fetch(url, { signal: ctl.signal })                // без своих заголовков — CORS gist raw отдаёт *, свои заголовки его бы сломали
       .then(function (r) { clearTimeout(timer); if (!r.ok) return Promise.reject('http'); return r.text(); },
             function (e) { clearTimeout(timer); return Promise.reject(e && e.name === 'AbortError' ? 'timeout' : 'net'); });
