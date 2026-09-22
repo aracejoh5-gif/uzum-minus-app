@@ -370,22 +370,28 @@
     var rp = data.rp;
     if (rp) {
       var rpOn = rp.st === 'on' || rp.st === 'paused';
-      var rpChip = { off: 'Выключен', on: 'Работает', paused: 'Пауза', stopped: 'Остановлен', done: 'Выполнено', na: 'Недоступен' }[rp.st] || rp.st;
+      // REQ-005/006 (uzum-repricer-per-variant, 22.09.2026): busy — у соседнего варианта карточки
+      // идёт цикл, кнопки включения нет (как у na), но текст и цвет свои — не путать с «недоступен».
+      var rpChip = { off: 'Выключен', on: 'Работает', paused: 'Пауза', stopped: 'Остановлен', done: 'Выполнено', na: 'Недоступен', busy: 'Недоступен' }[rp.st] || rp.st;
       var rc = document.createElement('div');
-      rc.className = 'bid b-' + ({ on: 'c', paused: 't', na: 'n', stopped: 'u' }[rp.st] || 'f');
+      rc.className = 'bid b-' + ({ on: 'c', paused: 't', na: 'n', busy: 'n', stopped: 'u' }[rp.st] || 'f');
       var prices = (rp.p || []).map(function (x, i) {
         var st0 = rp.p0 && rp.p0[i] ? rp.p0[i][1] : null;
         return num(x[1]) + (st0 && st0 !== x[1] ? ' <span style="color:var(--hint)">(старт ' + num(st0) + ', потолок ' + num(Math.floor(st0 * 1.2)) + ')</span>' : '');
       }).join(' / ');
+      // REQ-006: сервер (minus_ui._repricer_state) теперь кладёт в rp.p цены варианта из дневника
+      // uzum_price_ticks ЗА СЕГОДНЯ, даже если цикл ни разу не включали — старое условие "нет цен
+      // -> тика ждём" уже верно отражает "и дневника за сегодня нет", отдельного поля не нужно.
       rc.innerHTML = '<div class="top"><div class="k">💲 Репрайсер цены</div><div class="chip">' + esc(rpChip) + '</div></div>' +
         '<div class="do" style="margin-top:8px;font-weight:400">' + (prices ? 'Цена: ' + prices + ' сум' : 'Цены появятся после утреннего тика (08:25)') +
           (rp.avg != null ? ' · продажи ' + String(rp.avg).replace('.', ',') + ' в день' : '') + '</div>' +
-        (rp.why ? '<div class="do" style="margin-top:6px;font-weight:400">' + esc(rp.why) + '</div>' : '') +
+        (rp.st === 'busy' ? '<div class="do" style="margin-top:6px;font-weight:400">Недоступен: у варианта ' + esc(rp.busy_with || '') + ' идёт цикл</div>'
+          : rp.why ? '<div class="do" style="margin-top:6px;font-weight:400">' + esc(rp.why) + '</div>' : '') +
         (rp.promo ? '<div class="do" style="margin-top:6px;font-weight:400;color:#d9a400">' + esc(rp.promo) + '</div>' : '') +
         (rp.next ? '<div class="do" style="margin-top:6px;font-weight:400;color:var(--hint)">Решение ' + esc(rp.next) + '</div>' : '') +
         '<details style="margin-top:6px;font-size:13px;color:var(--hint)"><summary style="cursor:pointer;font-weight:600">как работает</summary>' +
         '<div style="margin-top:4px;line-height:1.5">+1% раз в 4 дня. Упали продажи больше чем на 30% — верну цену, остановлюсь и позову Вику. Потолок +20%. В акции Uzum цену менять нельзя — жду конца акции и трёх дней без неё</div></details>';
-      if (rp.st !== 'na') {
+      if (rp.st !== 'na' && rp.st !== 'busy') {
         var rpBtn = document.createElement('button');
         rpBtn.style.cssText = 'margin-top:10px;width:100%;padding:11px;border:0;border-radius:10px;font-weight:600;font-size:15px;background:' +
           (rpOn ? 'var(--line);color:var(--fg)' : 'var(--btn);color:var(--btnfg)');
@@ -534,11 +540,20 @@
       var whyText = code === 'o' && b[2] >= 99
         ? 'Неделю нашей рекламы нет ни в одном замере выдачи, а место без рекламы и так в топ-10 — ключ ничего не даёт. Отключаем; если органика упадёт ниже 10-го, я предложу вернуть.'
         : (BID_WHY[code] || '');
+      // REQ-007 (uzum-repricer-per-variant, 22.09.2026): подпись у совета «снизить» при включённом
+      // авто-режиме — b[10] (feeder, индекс 10, в конец строки, не сдвигает старые). Кормилец авто
+      // не трогает (auto.pick() режет его из выборки) — «только руками»; остальные ключи с «снизить»
+      // при включённом авто заберёт сама завтра.
+      var autoNote = code === 'd' && data.a
+        ? (b[10] ? '<div class="s" style="margin-top:6px;color:var(--hint)">кормилец — только руками</div>'
+                 : '<div class="s" style="margin-top:6px;color:var(--hint)">авто снизит завтра 08:07, нажимать не надо</div>')
+        : '';
       d.innerHTML = '<div class="top"><div class="k">' + esc(b[0]) + '</div><div class="chip">' + BID[code] + '</div></div>' +
         '<div class="nums"><div><b>' + (b[1] ? num(b[1]) : 'выкл') + '</b>ставка</div><div><b>' + (b[2] >= 99 ? 'нет' : (b[2] || '—')) + '</b>' + (b[2] >= 99 ? 'рекламы в выдаче' : 'место с рекламой') + '</div>' +
         '<div><b>' + (b[3] || '—') + '</b>без рекламы</div><div><b>' + b[4] + '</b>зак · ' + num(b[5]) + '</div></div>' +
         drrLine(b) +
         (pick ? '<div class="row2"><div class="box"></div><div class="do">' + what + '</div></div>' : '<div class="do" style="margin-top:8px">' + what + '</div>') +
+        autoNote +
         (whyText ? '<details style="margin-top:6px;font-size:12px;color:var(--hint)"><summary style="cursor:pointer">почему</summary><div style="margin-top:4px;line-height:1.4">' + esc(whyText) +
           (code === 'w' && b[4] ? ' За неделю ' + b[4] + ' зак.' : '') + '</div></details>' : '');
       if (pick) {
