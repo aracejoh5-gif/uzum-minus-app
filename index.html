@@ -150,6 +150,7 @@
     return a;
   }
   function load() {
+    stock = null;   // REQ-001: режим ссылки (?z=/?d=) экран «Закуп» не несёт — не показываем стухшую кнопку
     var q = new URLSearchParams(location.search), z = q.get('z'), d = q.get('d');
     if (z) {
       if (!window.DecompressionStream) return Promise.reject('old');
@@ -160,6 +161,7 @@
   }
 
   var all = [], data = null, items = [], cards = [], grow = [], bids = [], bidOn = {}, growOn = {}, tab = 'w', seen = false;
+  var stock = null;   // REQ-001 uzum-stock-tab: {r,u,n,e,pos,pcs,sum,np} — только режим сервера, ссылка (?z=/?d=) его не несёт
   var rm = [], rmOn = {}, rmn = 0;   // rmn — сколько убрано ВСЕГО (сервер шлёт префикс rm, см. RM_SHOWN) // «Убрано из показов»: rm — [слово, перевод, дата, кто], rmOn — отмеченные на возврат
   var VERD = { e: 'Дорого', z: 'Без заказов', r: 'Рано судить', n: 'Нет маржи', h: 'Держать' };
   var mode = 'link'; // 'server' — данные и действия через API; 'link' — запасной, как раньше (?z=/?d=, sendData)
@@ -179,6 +181,7 @@
         clearTimeout(timer);
         var c = o.c || [];
         c.forEach(function (x) { if (o.t && !x.t) x.t = o.t; });
+        stock = o.st || null;   // REQ-001: экран «Закуп» — только этот путь и гист-путь ниже несут 'st'
         return c;
       }, function (e) { clearTimeout(timer); return Promise.reject(e === 'auth' ? 'auth' : e === 'http' ? 'http' : (e && e.name === 'AbortError' ? 'timeout' : 'net')); });
   }
@@ -234,6 +237,7 @@
         .then(function (o) {
           var c = o.c || [];
           c.forEach(function (x) { if (o.t && !x.t) x.t = o.t; });
+          stock = o.st || null;
           return c;
         });
     });
@@ -283,6 +287,17 @@
     var total = all.reduce(function (s, c) { return s + ((c.hd || [])[0] || 0); }, 0);
     $('title').textContent = 'Реклама Uzum';
     list.innerHTML = freshness((all[0] || {}).t) + '<p class="head">Расход по отчётам <b>' + num(total) + '</b> сум · кампаний ' + all.length + '</p>';
+    // REQ-002 uzum-stock-tab: кнопка «Закуп» рядом со списком кампаний, бейдж — позиций к заказу.
+    // stock может быть null (сбой остатков внутри state_json — fail-open) или пустым (r/u/n все пустые) — тогда не показываем.
+    if (stock && (stock.r.length || stock.u.length || stock.n.length)) {
+      var sb = document.createElement('div');
+      sb.className = 'camp';
+      sb.innerHTML = '<div class="body"><div class="nm">📦 Закуп</div><div class="n">' +
+        (stock.pos ? 'к заказу ' + stock.pos + (stock.pos === 1 ? ' позиция' : ' позиций') : 'остатки в норме') + '</div></div>' +
+        (stock.pos ? '<div class="chip" style="background:#d64545">' + stock.pos + '</div>' : '') + '<div class="go">›</div>';
+      sb.onclick = function () { tap(); openStock(); };
+      list.appendChild(sb);
+    }
     all.map(function (c, i) { return [c, i]; })
       .sort(function (a, b) { return sev(b[0]) - sev(a[0]) || ((b[0].hd || [])[0] || 0) - ((a[0].hd || [])[0] || 0); })
       .forEach(function (p) {
@@ -325,6 +340,62 @@
       else $('back').style.display = 'block';   // show() тут не годится: в CSS у #back display:none
     }
     render(); window.scrollTo(0, 0);
+  }
+
+  // ---- экран «Закуп» (REQ-002…005 uzum-stock-tab, 23.09.2026): остатки, скорость, что в пути,
+  // сколько заказать. Данные — payload stock (см. var stock выше), только режим сервера.
+  // Строка stock.r[i]: [метка, остаток, скорость, дней хватит, в пути, заказать, к приходу останется, опоздали]
+  function openStock() {
+    data = null;
+    show('tabs', false); show('sub', false); show('bar', false);
+    if (tg && tg.BackButton && tg.BackButton.show) tg.BackButton.show();
+    else $('back').style.display = 'block';
+    $('title').textContent = 'Закуп';
+    renderStock();
+    window.scrollTo(0, 0);
+  }
+
+  function renderStock() {
+    var st = stock || { r: [], u: [], n: [], e: 0, pos: 0, pcs: 0, sum: 0, np: [] };
+    var html = freshness((all[0] || {}).t);
+    if (st.e) html += '<div class="stale">⚠️ карта партий не заполнена — «в пути» не учитывается</div>';
+    html += '<p class="head"><b>к заказу ' + (st.pos || 0) + (st.pos === 1 ? ' позицию' : ' позиций') + '</b> · ' +
+      num(st.pcs || 0) + ' шт' + (st.sum ? ' · ≈ ' + num(st.sum) + ' сум' : '') + '</p>';
+    if (st.np && st.np.length) html += '<p class="n" style="color:var(--hint);margin:-8px 0 12px">без закупочной цены: ' + st.np.map(esc).join(', ') + '</p>';
+    list.innerHTML = html;
+    if (!st.r.length) {
+      var e = document.createElement('div'); e.className = 'empty'; e.textContent = 'Остатки в норме — заказывать пока нечего.';
+      list.appendChild(e);
+    }
+    // REQ-003: сервер уже сортирует по срочности (uzum/stock.py::stock_report) — опоздавшие
+    // (меньше days_left) естественно оказываются первыми, здесь порядок не трогаем.
+    st.r.forEach(function (row) {
+      var label = row[0], qty = row[1], days = row[3], transit = row[4], need = row[5], left = row[6], late = row[7];
+      var d = document.createElement('div');
+      d.className = 'card ' + (late ? 'v-e' : 'v-r');
+      d.innerHTML = '<div class="top"><div class="k">' + esc(label) + (late ? ' <span class="badge">ОПОЗДАЛИ</span>' : '') + '</div>' +
+        '<div class="chip">заказать ' + num(need) + '</div></div>' +
+        '<div class="do">хватит на ' + days + ' дней</div>' +
+        '<div class="n">' + num(qty) + ' шт' + (transit > 0 ? ' · в пути ' + num(transit) : '') + '</div>' +
+        '<div class="n"' + (left < 0 ? ' style="color:#d64545;font-weight:600"' : '') + '>к приходу останется ' + left + ' дней</div>';
+      list.appendChild(d);
+    });
+    // REQ-004: два свёрнутых блока внизу, пустой не рисуем.
+    if (st.u && st.u.length) {
+      var det = document.createElement('details'); det.style.cssText = 'margin:14px 0 0;font-size:13px;color:var(--hint)';
+      det.innerHTML = '<summary style="cursor:pointer;font-weight:600">не опознано в пути (' + st.u.length + ')</summary>' +
+        '<div style="margin-top:6px;line-height:1.6">' + st.u.map(function (u) { return esc(u[0]) + ' — ' + num(u[1]) + ' шт'; }).join('<br>') +
+        '<div style="margin-top:8px">уточни у Кати, к какому цвету</div></div>';
+      list.appendChild(det);
+    }
+    if (st.n && st.n.length) {
+      var det2 = document.createElement('details'); det2.style.cssText = 'margin:10px 0 0;font-size:13px;color:var(--hint)';
+      det2.innerHTML = '<summary style="cursor:pointer;font-weight:600">новые товары (' + st.n.length + ')</summary>' +
+        '<div style="margin-top:6px;line-height:1.6">' + st.n.map(esc).join('<br>') +
+        '<div style="margin-top:8px">скорость посчитаю с первых продаж</div></div>';
+      list.appendChild(det2);
+    }
+    window.scrollTo(0, 0);
   }
 
   // ---- вкладка «Рекомендации»: k = [ключ, расход, заказы, цена заказа, вердикт, порог ставки, сливает?]
