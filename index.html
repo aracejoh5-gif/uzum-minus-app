@@ -266,6 +266,15 @@
                     : '<p class="head" style="margin-top:-4px">Данные на ' + hm + ' ·' + btn + '</p>';
   }
 
+  // Плашка статуса кампании (T5, 23.09): cs = [статус, "дд.мм" начала статуса, остаток дня, остаток недели].
+  // Сервер шлёт cs, только когда есть хотя бы один снимок бюджета; ACTIVE — плашки нет, ставки живые.
+  function statusBanner() {
+    var cs = data && data.cs;
+    if (!cs || cs[0] === 'ACTIVE') return '';
+    var label = cs[0] === 'PAUSED' ? 'Кампания на паузе' : cs[0] === 'LIMIT_REACHED' ? 'Дневной бюджет исчерпан' : 'Статус: ' + cs[0];
+    return '<div class="stale">⏸ ' + label + (cs[1] ? ' с ' + cs[1] : '') + '</div>';
+  }
+
   // ---- главный экран: список кампаний, проблемные сверху
   function home() {
     data = null;
@@ -287,6 +296,9 @@
         if (w && s !== 1) nums += (nums ? ' · ' : '') + 'слов: ' + w;
         if (c.ph && c.ph[2]) nums += (nums ? ' · ' : '') + 'органика ' + c.ph[2] + '-е';
         if (c.a) nums += (nums ? ' · ' : '') + '🤖 авто';
+        // T5 (23.09): статус кампании виден сразу в списке — не только внутри карточки.
+        if (c.cs && c.cs[0] !== 'ACTIVE') nums += (nums ? ' · ' : '') +
+          (c.cs[0] === 'PAUSED' ? '⏸ на паузе' : c.cs[0] === 'LIMIT_REACHED' ? '🚫 бюджет исчерпан' : '⚠️ ' + c.cs[0]);
         var d = document.createElement('div');
         d.className = 'camp s' + s;
         d.innerHTML = '<div class="body"><div class="nm">' + esc(c.n || '?') + '</div><div class="n">' + nums + '</div></div>' +
@@ -318,7 +330,7 @@
   // ---- вкладка «Рекомендации»: k = [ключ, расход, заказы, цена заказа, вердикт, порог ставки, сливает?]
   // g = [запрос, заказы, клики] — свои подсказки, никаких кнопок действия
   function renderCards() {
-    list.innerHTML = freshness(data.t);
+    list.innerHTML = freshness(data.t) + statusBanner();
     var hd = data.hd, ph = data.ph;
     // Шапка «Рекомендаций» — плитки чисел (Николай 21.09: глаз не находит главное число
     // среди 5-6 строк текста). Одна мысль на плитку, порог/цель подписью под числом,
@@ -500,7 +512,7 @@
       (lim != null ? ' при пределе ' + lim + '%' : '') + '</div>';
   }
   function renderBids() {
-    list.innerHTML = freshness(data.t) + '<p class="head">Цель по каждому ключу — отключить ставку: к минимуму → в топ-5 → отключаем → органика упала ниже 10-го → возвращаем минималку.</p>';
+    list.innerHTML = freshness(data.t) + statusBanner() + '<p class="head">Цель по каждому ключу — отключить ставку: к минимуму → в топ-5 → отключаем → органика упала ниже 10-го → возвращаем минималку.</p>';
     // Авто-режим: приложение только ПРОСИТ включить — включает кнопка подтверждения в боте; выключение — сразу
     var au = document.createElement('div');
     au.className = 'bid b-' + (data.a ? 'c' : 't');
@@ -632,7 +644,7 @@
       : cards.some(function (c) { return c[4] === 'e'; });
     show('pause', rec && over);
     if (rec) { renderCards(); return; }
-    list.innerHTML = freshness(data.t);
+    list.innerHTML = freshness(data.t) + statusBanner();
     [['c', 'Уверен — сними лишнее'], ['s', 'Сомневаюсь — отметь нужное']].forEach(function (g) {
       var rows = items.map(function (it, i) { return [it, i]; }).filter(function (p) { return p[0].tier === g[0]; });
       if (!rows.length) return;
