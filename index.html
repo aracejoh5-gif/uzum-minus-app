@@ -546,7 +546,7 @@
       // при включённом авто заберёт сама завтра.
       var autoNote = code === 'd' && data.a
         ? (b[10] ? '<div class="s" style="margin-top:6px;color:var(--hint)">кормилец — только руками</div>'
-                 : '<div class="s" style="margin-top:6px;color:var(--hint)">авто снизит завтра 08:07, нажимать не надо</div>')
+                 : '<div class="s" style="margin-top:6px;color:var(--hint)">авто снизит в ближайший тик 08:07, нажимать не надо</div>')
         : '';
       d.innerHTML = '<div class="top"><div class="k">' + esc(b[0]) + '</div><div class="chip">' + BID[code] + '</div></div>' +
         '<div class="nums"><div><b>' + (b[1] ? num(b[1]) : 'выкл') + '</b>ставка</div><div><b>' + (b[2] >= 99 ? 'нет' : (b[2] || '—')) + '</b>' + (b[2] >= 99 ? 'рекламы в выдаче' : 'место с рекламой') + '</div>' +
