@@ -160,7 +160,7 @@
   }
 
   var all = [], data = null, items = [], cards = [], grow = [], bids = [], bidOn = {}, growOn = {}, tab = 'w', seen = false;
-  var rm = [], rmOn = {};   // «Убрано из показов»: rm — [слово, перевод, дата, кто], rmOn — отмеченные на возврат
+  var rm = [], rmOn = {}, rmn = 0;   // rmn — сколько убрано ВСЕГО (сервер шлёт префикс rm, см. RM_SHOWN) // «Убрано из показов»: rm — [слово, перевод, дата, кто], rmOn — отмеченные на возврат
   var VERD = { e: 'Дорого', z: 'Без заказов', r: 'Рано судить', n: 'Нет маржи', h: 'Держать' };
   var mode = 'link'; // 'server' — данные и действия через API; 'link' — запасной, как раньше (?z=/?d=, sendData)
 
@@ -316,7 +316,7 @@
     cards = data.k || [];
     grow = data.g || [];
     bids = data.s || []; bidOn = {}; growOn = {};
-    rm = data.rm || []; rmOn = {};
+    rm = data.rm || []; rmOn = {}; rmn = data.rmn || 0;
     tab = items.length ? 'w' : (cards.length ? 'r' : 'b'); seen = false;
     $('title').textContent = data.n || 'Минус-слова';
     show('bar', true);
@@ -672,7 +672,7 @@
     }
     if (rm.length) {
       var rmBox = document.createElement('details'); rmBox.style.cssText = 'margin:16px 0 0';
-      rmBox.innerHTML = '<summary style="cursor:pointer;font-weight:600;padding:6px 0">Убрано из показов (' + rm.length + ')</summary>';
+      rmBox.innerHTML = '<summary style="cursor:pointer;font-weight:600;padding:6px 0">Убрано из показов (' + (rmn || rm.length) + ')</summary>' + (rmn > rm.length ? '<div class="s" style="padding:2px 0 4px">показаны последние ' + rm.length + '</div>' : '');
       rm.forEach(function (r, i) {
         var word = r[0], tr = r[1], at = r[2], who = r[3];
         var sub = at ? (at.slice(8, 10) + '.' + at.slice(5, 7) + (who ? ' · ' + esc(who) : '')) : 'руками в кабинете';
