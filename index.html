@@ -373,8 +373,10 @@
       var label = row[0], qty = row[1], rate = row[2], days = row[3], transit = row[4], need = row[5], left = row[6], late = row[7];
       var d = document.createElement('div');
       d.className = 'card ' + (late ? 'v-e' : 'v-r');
+      // баг 24.09: need пустой у строк без сигнала (сервер шлёт null, пока days_left не
+      // опустился до порога) — чип «заказать» тогда не рисуем, а не «заказать 0/null».
       d.innerHTML = '<div class="top"><div class="k">' + esc(label) + (late ? ' <span class="badge">ОПОЗДАЛИ</span>' : '') + '</div>' +
-        '<div class="chip">заказать ' + num(need) + '</div></div>' +
+        (need != null ? '<div class="chip">заказать ' + num(need) + '</div>' : '') + '</div>' +
         '<div class="do">хватит на ' + days + ' дней</div>' +
         '<div class="n">' + num(qty) + ' шт' + (transit > 0 ? ' · в пути ' + num(transit) : '') +
           (rate ? ' · ' + rate + ' шт/день' : '') + '</div>' +
