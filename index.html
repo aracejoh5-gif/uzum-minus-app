@@ -316,7 +316,7 @@
           (c.cs[0] === 'PAUSED' ? '⏸ на паузе' : c.cs[0] === 'LIMIT_REACHED' ? '🚫 бюджет исчерпан' : '⚠️ ' + c.cs[0]);
         var d = document.createElement('div');
         d.className = 'camp s' + s;
-        d.innerHTML = '<div class="body"><div class="nm">' + esc(c.n || '?') + '</div><div class="n">' + nums + '</div></div>' +
+        d.innerHTML = '<div class="body"><div class="nm">' + esc(c.dn || c.n || '?') + '</div><div class="n">' + nums + '</div></div>' +
           '<div class="chip">' + chip + '</div><div class="go">›</div>';
         d.onclick = function () { tap(); open(p[1]); };
         list.appendChild(d);
@@ -333,7 +333,7 @@
     bids = data.s || []; bidOn = {}; growOn = {};
     rm = data.rm || []; rmOn = {}; rmn = data.rmn || 0;
     tab = items.length ? 'w' : (cards.length ? 'r' : 'b'); seen = false;
-    $('title').textContent = data.n || 'Минус-слова';
+    $('title').textContent = data.dn || data.n || 'Минус-слова';
     show('bar', true);
     if (all.length > 1) {
       if (tg && tg.BackButton && tg.BackButton.show) tg.BackButton.show();
