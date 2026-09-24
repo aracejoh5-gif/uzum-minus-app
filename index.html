@@ -370,13 +370,14 @@
     // REQ-003: сервер уже сортирует по срочности (uzum/stock.py::stock_report) — опоздавшие
     // (меньше days_left) естественно оказываются первыми, здесь порядок не трогаем.
     st.r.forEach(function (row) {
-      var label = row[0], qty = row[1], days = row[3], transit = row[4], need = row[5], left = row[6], late = row[7];
+      var label = row[0], qty = row[1], rate = row[2], days = row[3], transit = row[4], need = row[5], left = row[6], late = row[7];
       var d = document.createElement('div');
       d.className = 'card ' + (late ? 'v-e' : 'v-r');
       d.innerHTML = '<div class="top"><div class="k">' + esc(label) + (late ? ' <span class="badge">ОПОЗДАЛИ</span>' : '') + '</div>' +
         '<div class="chip">заказать ' + num(need) + '</div></div>' +
         '<div class="do">хватит на ' + days + ' дней</div>' +
-        '<div class="n">' + num(qty) + ' шт' + (transit > 0 ? ' · в пути ' + num(transit) : '') + '</div>' +
+        '<div class="n">' + num(qty) + ' шт' + (transit > 0 ? ' · в пути ' + num(transit) : '') +
+          (rate ? ' · ' + rate + ' шт/день' : '') + '</div>' +
         '<div class="n"' + (left < 0 ? ' style="color:#d64545;font-weight:600"' : '') + '>к приходу останется ' + left + ' дней</div>';
       list.appendChild(d);
     });
