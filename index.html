@@ -251,10 +251,20 @@
     });
   }
 
-  // 3 — ДРР кампании выше предела, 2 — есть «дорого» или «сливает» (w=1), 1 — есть слова, 0 — спокойно
+  // ДРР везде ОДИН и тот же — тот, что в карточке: вся реклама / все заказы товара (склейки,
+  // если вариантов в карточке больше одного). hd[2] — другое число: расход на заказы С РЕКЛАМЫ,
+  // оно в разы выше (реклама почти выключена, а 14-дневный расход остался) и как «ДРР» врёт.
+  // Нет ph (старый сервер) — честно нет ДРР, а не подстановка чужого числа.
+  function drr(c) {
+    var ph = c && c.ph;
+    if (!ph) return null;
+    return ph[6] > 1 && ph[7] != null ? ph[7] : ph[0];
+  }
+
+  // 3 — ДРР товара выше предела, 2 — есть «дорого» или «сливает» (w=1), 1 — есть слова, 0 — спокойно
   function sev(c) {
-    var hd = c.hd || [];
-    if (hd[2] != null && hd[3] != null && hd[2] > hd[3]) return 3;
+    var hd = c.hd || [], d = drr(c);
+    if (d != null && hd[3] != null && d > hd[3]) return 3;
     if ((c.k || []).some(function (x) { return x[4] === 'e' || x[6]; })) return 2;
     return (c.i || []).length ? 1 : 0;
   }
@@ -301,13 +311,13 @@
     all.map(function (c, i) { return [c, i]; })
       .sort(function (a, b) { return sev(b[0]) - sev(a[0]) || ((b[0].hd || [])[0] || 0) - ((a[0].hd || [])[0] || 0); })
       .forEach(function (p) {
-        var c = p[0], s = sev(c), hd = c.hd || [], w = (c.i || []).length;
+        var c = p[0], s = sev(c), hd = c.hd || [], w = (c.i || []).length, d = drr(c);
         var bad = (c.k || []).filter(function (x) { return x[4] === 'e'; }).length;
         var waste = (c.k || []).filter(function (x) { return x[6]; }).length;
         var lbl2 = bad ? 'Дорого' + (bad > 1 ? ' · ' + bad : '') : 'Сливает' + (waste > 1 ? ' · ' + waste : '');
-        var chip = s === 3 ? 'ДРР ' + hd[2] + '%' : s === 2 ? lbl2 : s === 1 ? 'Слова · ' + w : 'Спокойно';
+        var chip = s === 3 ? 'ДРР ' + d + '%' : s === 2 ? lbl2 : s === 1 ? 'Слова · ' + w : 'Спокойно';
         var nums = hd.length ? num(hd[0]) + ' сум · ' + hd[1] + ' зак' +
-          (hd[2] != null && s !== 3 ? ' · ДРР ' + hd[2] + '%' : '') + (s === 3 ? ' · предел ' + hd[3] + '%' : '') : '';
+          (d != null && s !== 3 ? ' · ДРР ' + d + '%' : '') + (s === 3 ? ' · предел ' + hd[3] + '%' : '') : '';
         if (w && s !== 1) nums += (nums ? ' · ' : '') + 'слов: ' + w;
         if (c.ph && c.ph[2]) nums += (nums ? ' · ' : '') + 'органика ' + c.ph[2] + '-е';
         if (c.a) nums += (nums ? ' · ' : '') + '🤖 авто';
@@ -412,7 +422,7 @@
     // если есть что показывать (hd/ph могут отсутствовать у старого сервера).
     if (hd || ph) {
       var glued = ph && ph[6] > 1 && ph[7] != null;
-      var cmp = ph ? (glued ? ph[7] : ph[0]) : null;
+      var cmp = drr(data);
       var lim = (hd || [])[3];
       var drrCol = cmp == null ? 'var(--fg)' : (lim != null && cmp > lim) ? '#d64545' : cmp <= 5 ? 'var(--ok)' : '#d9a400';
       var bo = ph && ph[10] != null;
@@ -490,8 +500,9 @@
     // «Что сделать»: максимум три строки, по убыванию денег — ответ одним взглядом, без
     // чтения карточек (Николай, 18.09: «не словесным поносом»). Всё считается из того же payload.
     var acts = [];
-    if (hd && hd[2] != null && hd[3] != null && hd[2] > hd[3])
-      acts.push([1e12, 'bad', 'Товар в минус: ДРР ' + hd[2] + '% при пределе ' + hd[3] + '% — реклама съедает больше маржи']);
+    var dr = drr(data);
+    if (dr != null && hd && hd[3] != null && dr > hd[3])
+      acts.push([1e12, 'bad', 'Товар в минус: ДРР ' + dr + '% при пределе ' + hd[3] + '% — реклама съедает больше маржи']);
     if (hd && hd[4] != null && hd[5] != null && hd[4] > hd[5])
       acts.push([1e11, 'bad', 'Рекламный заказ дороже маржи: ' + num(hd[4]) + ' сум против ' + num(hd[5]) + ' — снижай ставки по дорогим ключам']);
     cards.forEach(function (c) {
@@ -714,7 +725,7 @@
     show('sub', !rec); show('cancel', !rec); show('apply', !rec);
     // Пауза глушит ВСЮ кампанию, включая кластеры, которые продают. Поэтому кнопка есть,
     // только когда кампания в целом за пределом ДРР; нет ДРР — когда есть «дорого».
-    var hd = data.hd || [], over = hd[2] != null && hd[3] != null ? hd[2] > hd[3]
+    var hd = data.hd || [], dr = drr(data), over = dr != null && hd[3] != null ? dr > hd[3]
       : cards.some(function (c) { return c[4] === 'e'; });
     show('pause', rec && over);
     if (rec) { renderCards(); return; }
