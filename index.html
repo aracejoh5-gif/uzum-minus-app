@@ -124,6 +124,14 @@
   .krow .kb { grid-column:3; font-weight:300; font-size:16px; letter-spacing:-.01em; font-variant-numeric:tabular-nums; text-align:right; }
   .krow .d { grid-column:1; font-size:11px; font-weight:300; color:var(--hint); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .krow .pill { grid-column:3; }
+  .srow { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:2px 10px; align-items:center; background:var(--card); border-radius:22px; padding:12px 14px; margin-bottom:8px; }
+  .srow .k { font-weight:400; font-size:14px; overflow-wrap:anywhere; }
+  .srow .q { grid-row:1 / span 2; grid-column:2; justify-self:end; font-size:26px; font-weight:200; letter-spacing:-.02em; font-variant-numeric:tabular-nums; line-height:1; }
+  .srow .q small { font-size:11px; font-weight:300; color:var(--hint); letter-spacing:0; } .srow .q .no { color:var(--hint); }
+  .srow .d, .srow .d2 { grid-column:1; font-size:11px; font-weight:300; color:var(--hint); }
+  .srow .d2 .neg { font-weight:500; color:var(--bad); }
+  .srow .pill { grid-column:2; grid-row:3; } .srow .d2 { grid-row:3; }
+  .note { background:var(--idle-soft); color:var(--hint); border-radius:18px; padding:8px 14px; margin:0 0 10px; font-weight:300; font-size:12px; }
   .pill { justify-self:end; font-size:10px; font-weight:500; padding:2px 7px; border-radius:999px; white-space:nowrap; }
   .p-ok { background:var(--ok-soft); color:var(--ok); } .p-wait { background:var(--wait-soft); color:var(--wait); }
   .p-bad { background:var(--bad-soft); color:var(--bad); } .p-idle { background:var(--idle-soft); color:var(--idle); } .p-minus { background:var(--minus-soft); color:var(--minus); }
@@ -487,10 +495,12 @@
   function renderStock() {
     var st = stock || { r: [], u: [], n: [], e: 0, pos: 0, pcs: 0, sum: 0, np: [] };
     var html = freshness((all[0] || {}).t);
-    if (st.e) html += '<div class="stale">⚠️ карта партий не заполнена — «в пути» не учитывается</div>';
-    html += '<p class="head"><b>к заказу ' + (st.pos || 0) + (st.pos === 1 ? ' позицию' : ' позиций') + '</b> · ' +
-      num(st.pcs || 0) + ' шт' + (st.sum ? ' · ≈ ' + num(st.sum) + ' сум' : '') + '</p>';
-    if (st.np && st.np.length) html += '<p class="n" style="color:var(--hint);margin:-8px 0 12px">без закупочной цены: ' + st.np.map(esc).join(', ') + '</p>';
+    if (st.e) html += '<div class="note">карта партий не заполнена — «в пути» не учитывается</div>';
+    html += '<div class="bento t3" style="margin:0 0 10px">' +
+      '<div class="tile"><span class="l">К заказу</span><span class="v">' + (st.pos || 0) + '</span><span class="n">' + (st.pos === 1 ? 'позиция' : 'позиций') + '</span></div>' +
+      '<div class="tile"><span class="l">Штук</span><span class="v">' + num(st.pcs || 0) + '</span><span class="n">всего</span></div>' +
+      '<div class="tile"><span class="l">Сумма</span><span class="v">' + (st.sum ? (st.sum >= 1e6 ? (st.sum / 1e6).toFixed(1).replace('.', ',') + '<small style="font-size:13px"> млн</small>' : num(st.sum)) : '—') + '</span><span class="n">' + (st.sum ? '≈ сум' : 'нет цены') + '</span></div></div>';
+    if (st.np && st.np.length) html += '<p class="n" style="color:var(--hint);margin:-2px 4px 10px">без закупочной цены: ' + st.np.map(esc).join(', ') + '</p>';
     list.innerHTML = html;
     if (!st.r.length) {
       var e = document.createElement('div'); e.className = 'empty'; e.textContent = 'Остатки в норме — заказывать пока нечего.';
@@ -501,15 +511,15 @@
     st.r.forEach(function (row) {
       var label = row[0], qty = row[1], rate = row[2], days = row[3], transit = row[4], need = row[5], left = row[6], late = row[7];
       var d = document.createElement('div');
-      d.className = 'card ' + (late ? 'v-e' : 'v-r');
+      d.className = 'srow';
       // баг 24.09: need пустой у строк без сигнала (сервер шлёт null, пока days_left не
-      // опустился до порога) — чип «заказать» тогда не рисуем, а не «заказать 0/null».
-      d.innerHTML = '<div class="top"><div class="k">' + esc(label) + (late ? ' <span class="badge">ОПОЗДАЛИ</span>' : '') + '</div>' +
-        (need != null ? '<div class="chip">заказать ' + num(need) + '</div>' : '') + '</div>' +
-        '<div class="do">хватит на ' + days + ' дней</div>' +
-        '<div class="n">' + num(qty) + ' шт' + (transit > 0 ? ' · в пути ' + num(transit) : '') +
-          (rate ? ' · ' + rate + ' шт/день' : '') + '</div>' +
-        '<div class="n"' + (left < 0 ? ' style="color:var(--bad);font-weight:600"' : '') + '>к приходу останется ' + left + ' дней</div>';
+      // опустился до порога) — число «заказать» тогда не рисуем, а не «заказать 0/null».
+      var pc = late ? 'bad' : need != null ? 'wait' : 'ok', pt = late ? 'Опоздали' : need != null ? 'Пора заказывать' : 'Хватает';
+      d.innerHTML = '<div class="k">' + esc(label) + '</div>' +
+        '<div class="q">' + (need != null ? num(need) + '<small> шт</small>' : '<span class="no">—</span>') + '</div>' +
+        '<div class="d">' + num(qty) + ' шт' + (transit > 0 ? ' · в пути ' + num(transit) : '') + (rate ? ' · ' + rate + ' шт/день' : '') + '</div>' +
+        '<span class="pill p-' + pc + '">' + pt + '</span>' +
+        '<div class="d2">хватит на ' + days + ' дн.' + (left != null ? ' · к приходу ' + (left < 0 ? '<b class="neg">' + left + '</b>' : left) + ' дн.' : '') + '</div>';
       list.appendChild(d);
     });
     // REQ-004: два свёрнутых блока внизу, пустой не рисуем.
