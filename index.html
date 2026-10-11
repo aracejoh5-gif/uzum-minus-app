@@ -28,7 +28,7 @@
   html { background:var(--bg); }
   body { margin:0; font:14px/1.4 var(--f); font-weight:400; font-synthesis:none; background:var(--page) var(--bg); background-attachment:fixed; color:var(--fg); padding:12px 12px calc(96px + env(safe-area-inset-bottom,0px)); min-height:100vh; }
   .row, .card, .bid, .camp, .todo, .tile, .advice, .tl, .chips span, #tabs, .back i, #bar { -webkit-backdrop-filter:blur(14px); backdrop-filter:blur(14px); }
-  h1 { font-size:20px; font-weight:500; margin:4px 0 2px; }
+  h1 { font-size:24px; font-weight:300; letter-spacing:-.02em; margin:6px 0 2px; }
   .sub { color:var(--hint); font-size:13px; font-weight:300; margin:0 0 12px; }
   h2 { font-size:12px; font-weight:500; text-transform:uppercase; letter-spacing:.04em; color:var(--hint); margin:16px 0 6px; }
   .row { display:flex; align-items:center; gap:12px; background:var(--card); border-radius:22px; padding:12px 14px; margin-bottom:8px; user-select:none; }
@@ -76,7 +76,7 @@
   .bid .k { font-weight:500; min-width:0; overflow-wrap:anywhere; }
   .bid .do { font-size:14px; font-weight:500; }
   .bid .row2, .grow .row2 { display:flex; align-items:center; gap:12px; margin-top:8px; user-select:none; }
-  .rf { color:inherit; font-weight:500; text-decoration:underline; white-space:nowrap; }
+  .rf { color:var(--acc,#f2762c); font-weight:400; text-decoration:none; white-space:nowrap; padding:2px 8px; border-radius:999px; background:var(--acc-soft,rgba(242,118,44,.12)); margin-left:4px; }
   .stale { background:#d9a400; color:#1b1b1b; border-radius:18px; padding:10px 14px; margin:0 0 10px; font-weight:500; font-size:14px; }
   #toast { position:fixed; left:12px; right:12px; bottom:calc(78px + env(safe-area-inset-bottom,0px)); border-radius:18px; padding:10px 14px; font-size:14px; font-weight:500; display:none; z-index:5; }
   #toast.ok { background:var(--ok); color:#fff; } #toast.err { background:var(--bad); color:#fff; }
@@ -381,7 +381,7 @@
     var age = Math.round(Date.now() / 60000 - t), d = new Date(t * 60000);
     var hm = ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2);
     return age > 60 ? '<div class="stale">Данные на ' + hm + ' — списку больше часа, ключи и ставки могли измениться.' + btn + '</div>'
-                    : '<p class="head" style="margin-top:-4px">Данные на ' + hm + ' ·' + btn + '</p>';
+                    : '<p class="head" style="margin-top:-4px">Данные на ' + hm + '' + btn + '</p>';
   }
 
   // Плашка статуса кампании (T5, 23.09): cs = [статус, "дд.мм" начала статуса, остаток дня, остаток недели].
