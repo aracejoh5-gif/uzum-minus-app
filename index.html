@@ -8,17 +8,19 @@
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <style>
   @font-face { font-family:"Jost"; font-style:normal; font-weight:200 500; font-display:swap; src:url(fonts/jost-cyrillic.woff2) format('woff2'); unicode-range:U+0301,U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116; }
+  /* узбекская кириллица (ғ қ ҳ …) — у Jost её нет, берём Onest (11.10: «қўнғироқ» рисовался чужим шрифтом) */
+  @font-face { font-family:"Jost"; font-style:normal; font-weight:200 500; font-display:swap; src:url(fonts/onest-cyrillic-ext.woff2) format('woff2'); unicode-range:U+0460-052F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F; }
   @font-face { font-family:"Jost"; font-style:normal; font-weight:200 500; font-display:swap; src:url(fonts/jost-latin.woff2) format('woff2'); unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD; }
   /* Токены макета 11.10: светлая / тёмная тема выбирается по Telegram.WebApp.colorScheme (класс на <html>) */
   :root { --f:"Jost",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; }
   :root, :root.light { --bg:#f4f2ef; --page:radial-gradient(120% 55% at 0% 0%,#f1e7dc 0%,transparent 60%),linear-gradient(180deg,#f3f2f0 0%,#e6eaee 55%,#b9c7d4 100%);
-    --card:rgba(255,255,255,.72); --card-solid:#fff; --fg:#1d1b19; --hint:#8a847d; --line:#e7e3de;
+    --card:rgba(255,255,255,.9); --card-solid:#fff; --fg:#1d1b19; --hint:#6d6863; --line:#e2ddd7;
     --acc:#f2762c; --acc-soft:#fde9dc; --ok:#1f9a57; --ok-soft:#e1f4e9; --bad:#d9415f; --bad-soft:#fbe3e8; --wait:#3b6fd8; --wait-soft:#e3ebfb; --idle:#8a847d; --idle-soft:#efece8;
     --btn:var(--acc); --btnfg:#fff; --on-bg:#fff; --on-fg:#1d1b19;
     --hero:radial-gradient(90% 120% at 0% 100%,#9a5524 0%,transparent 55%),radial-gradient(80% 100% at 100% 0%,#a06a40 0%,transparent 60%),linear-gradient(135deg,#a8683a 0%,#7c7f8a 60%,#5d7186 100%); --hero-on:#7a4a28;
     --minus:#6d6396; --minus-soft:#ebe8f3; }
   :root.dark { --bg:#121214; --page:radial-gradient(110% 55% at 0% 0%,#2a1f17 0%,transparent 60%),linear-gradient(180deg,#141517 0%,#151a20 60%,#1f2935 100%);
-    --card:rgba(255,255,255,.06); --card-solid:#1c1c20; --fg:#f2f1ef; --hint:#8d8a86; --line:#2b2b31;
+    --card:rgba(255,255,255,.07); --card-solid:#1c1c20; --fg:#f2f1ef; --hint:#a19d98; --line:#2b2b31;
     --acc:#ff8a3d; --acc-soft:#3a2416; --ok:#3ddc84; --ok-soft:#163223; --bad:#ff5c7a; --bad-soft:#3a1a22; --wait:#7aa7ff; --wait-soft:#1c2740; --idle:#8d8a86; --idle-soft:#2a2a2f; --minus:#b3a8e0; --minus-soft:#2a2740;
     --on-bg:rgba(255,255,255,.92);
     --hero:radial-gradient(90% 120% at 0% 100%,#a35d2a 0%,transparent 55%),radial-gradient(80% 100% at 100% 0%,#d39a62 0%,transparent 60%),linear-gradient(135deg,#7a4a28 0%,#3c4652 60%,#222a33 100%); }
@@ -223,6 +225,12 @@
   @keyframes spin { to { transform:rotate(360deg); } }
   @media (prefers-reduced-motion: reduce) { .sk::after, .boot .sp { animation:none; } }
   .retry { margin-top:14px; border:0; border-radius:999px; padding:11px 22px; font:500 14px inherit; background:var(--acc); color:#fff; }
+
+  /* 11.10 читаемость: карточки отделены от фона тонкой рамкой и тенью (на светлом сливались), подписи разделов крупнее и темнее */
+  :root.light .row, :root.light .card, :root.light .tile, :root.light .todo, :root.light .hrow, :root.light .srow, :root.light .xrow,
+  :root.light .bid, :root.light .camp, :root.light .advice, :root.light .tl, :root.light details > summary, :root.light .word {
+    box-shadow:0 0 0 1px rgba(40,30,20,.06), 0 2px 8px rgba(40,30,20,.05); }
+  .sec { font-size:12.5px !important; font-weight:500 !important; color:var(--fg) !important; opacity:.75; margin:16px 4px 8px !important; }
 </style>
 </head>
 <body>
@@ -659,7 +667,7 @@
       // REQ-006: сервер (minus_ui._repricer_state) теперь кладёт в rp.p цены варианта из дневника
       // uzum_price_ticks ЗА СЕГОДНЯ, даже если цикл ни разу не включали — старое условие "нет цен
       // -> тика ждём" уже верно отражает "и дневника за сегодня нет", отдельного поля не нужно.
-      rc.innerHTML = '<div class="top"><div class="k">💲 Репрайсер цены</div><div class="chip">' + esc(rpChip) + '</div></div>' +
+      rc.innerHTML = '<div class="top"><div class="k">Репрайсер цены</div><div class="chip">' + esc(rpChip) + '</div></div>' +
         '<div class="do" style="margin-top:8px;font-weight:400">' + (prices ? 'Цена: ' + prices + ' сум' : 'Цены появятся после утреннего тика (08:25)') +
           (rp.avg != null ? ' · продажи ' + String(rp.avg).replace('.', ',') + ' в день' : '') + '</div>' +
         (rp.st === 'busy' ? '<div class="do" style="margin-top:6px;font-weight:400">Недоступен: у варианта ' + esc(rp.busy_with || '') + ' идёт цикл</div>'
@@ -868,13 +876,15 @@
       return '<div class="tile"><span class="l">' + x[0] + '</span><span class="v">' + esc(x[1]) + '</span><span class="n">' + x[2] + '</span></div>';
     }).join('') + '</div>';
   }
+  var ADV_PC = { d: 'acc', p: 'wait', x: 'bad', u: 'bad', o: 'ok', c: 'ok', m: 'wait', w: 'idle', t: 'idle', n: 'idle', f: 'idle' };
   function keyRow(b, i) {
     var st = stateOf(b), d = document.createElement('div'), age = b[13] != null ? ' · замер ' + ageText(b[13]) + ' назад' : '';
     d.className = 'krow';
     d.innerHTML = '<span class="k">' + esc(b[0]) + '</span>' + spark(b[14], SPC[st] || 'var(--idle)') +
       '<span class="kb">' + (b[1] ? num(b[1]) : 'выкл') + '</span>' +
       '<span class="d">' + (st === 'minus' && b[12] ? esc(b[12]) : 'место ' + (b[2] >= 99 ? 'нет рекламы' : (b[2] || '—')) + age) + '</span>' +
-      (st ? '<span class="pill p-' + ST[st][1] + '">' + ST[st][0] + '</span>' : '');
+      (st ? '<span class="pill p-' + ST[st][1] + '">' + ST[st][0] + '</span>'
+          : (BID[b[6]] ? '<span class="pill p-' + (ADV_PC[b[6]] || 'idle') + '">' + BID[b[6]] + '</span>' : ''));   // вне пилота — совет, как раньше, мягкой плашкой
     d.onclick = function () { tap(); cur = i; renderBids(); window.scrollTo(0, 0); };
     return d;
   }
@@ -882,7 +892,7 @@
     list.innerHTML = freshness(data.t) + statusBanner();
     if (data.tk || data.a) list.insertAdjacentHTML('beforeend', heroHtml(data.tk || {}));
     var ao = $('autoOff'); if (ao) ao.onclick = function () { tap(); send({ auto: false }); };
-    if (data.bt) list.insertAdjacentHTML('beforeend', tilesHtml(data.bt));
+    if (data.bt && data.pl) list.insertAdjacentHTML('beforeend', tilesHtml(data.bt));     // плитки — только у кампании в пилоте: вне его «0 в зоне» и «расход 0» читаются как поломка
     var FL = [['all', 'Все'], ['wait', 'Ждёт проверки'], ['bad', 'Откатила'], ['idle', 'Стоит']];
     if (bids.some(function (b) { return b[11] === 'minus'; })) FL.push(['minus', 'Минус']);
     function inF(b, f) { var st = stateOf(b); return f === 'all' || (f === 'idle' ? st === 'idle' || st === 'hold' : st === f); }
@@ -941,8 +951,8 @@
   function bidsTail() {
     // «Все ключи»: в ссылку названия всех ключей не влезают — Уля пришлёт полный список таблицей в чат
     var kb = document.createElement('button');
-    kb.style.cssText = 'margin:6px 0 2px;width:100%;padding:11px;border:1px solid var(--line);border-radius:10px;font-weight:600;font-size:15px;background:transparent;color:var(--fg)';
-    kb.textContent = '📋 Все ключи кампании — списком в чат';
+    kb.style.cssText = 'margin:10px 0 2px;width:100%;padding:11px;border:0;border-radius:999px;font:400 14px var(--f);background:var(--card);color:var(--fg);box-shadow:0 0 0 1px var(--line)';
+    kb.textContent = 'Все ключи кампании — списком в чат';
     kb.onclick = function () { tap(); send({ keys: true }); };
     list.appendChild(kb);
     if (data.un) {
