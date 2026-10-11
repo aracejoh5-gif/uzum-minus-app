@@ -109,6 +109,9 @@
   .ticks span { flex:1; text-align:center; font-size:11px; font-weight:400; padding:4px 0; border-radius:999px; background:rgba(255,255,255,.22); }
   .ticks span.on { background:rgba(255,255,255,.92); color:var(--hero-on,#7a4a28); }
   .hero .nx { font-size:12px; font-weight:300; opacity:.95; margin-top:2px; }
+  .hero { position:relative; }
+  .hero .nx .rf { background:none; color:#fff; padding:0; text-decoration:underline; }
+  .hero .hth { position:absolute; top:14px; right:14px; width:34px; height:34px; border-radius:50%; display:grid; place-items:center; background:rgba(255,255,255,.85); color:#3a2a1e; font-size:12px; text-decoration:none; }
   .bento { display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-top:8px; }
   .bento.t3 { grid-template-columns:repeat(3,1fr); margin-top:0; }
   .tile { background:var(--card); border-radius:24px; padding:12px; display:grid; gap:2px; min-width:0; align-content:start; }
@@ -458,12 +461,21 @@
     var total = all.reduce(function (s, c) { return s + ((c.hd || [])[0] || 0); }, 0);
     var ordersAll = all.reduce(function (s, c) { return s + ((c.hd || [])[1] || 0); }, 0);
     var hasCn = all.some(function (c) { return c.cn; });
-    var waitAll = all.reduce(function (s, c) { return s + ((c.cn || {}).minus || 0) + ((c.cn || {}).bids || 0); }, 0);
-    $('title').textContent = 'Реклама Uzum';
-    var plates = '<span>Кампаний<b>' + all.length + '</b></span>' + (ordersAll ? '<span>Заказы<b>' + num(ordersAll) + '</b></span>' : '') +
-      (hasCn ? '<span>Ждут тебя<b>' + waitAll + '</b></span>' : '');
-    list.innerHTML = freshness((all[0] || {}).t) + '<div class="hero" style="margin-bottom:8px"><span class="t">Расход по отчётам</span><span class="big">' + num(total) +
-      '<small> сум</small></span><div class="minirow">' + plates + '</div></div>';
+    // «Ждут тебя» — решения по ставкам и ключам; кандидаты в минус (до 200 на кампанию) видны внутри кампании (11.10: было 1110)
+    var waitAll = all.reduce(function (s, c) { return s + ((c.cn || {}).bids || 0); }, 0);
+    // ДРР общий: расход / выручка, выручка кампании = расход × 100 / её ДРР
+    var drrSp = 0, drrRev = 0;
+    all.forEach(function (c) { var h = c.hd || []; if (h[0] && h[2] > 0) { drrSp += h[0]; drrRev += h[0] * 100 / h[2]; } });
+    $('title').textContent = 'Реклама Uzum'; show('title', false);   // макет v2: заголовок — шапка Telegram, своё в карточке
+    var plates = (drrRev ? '<span>ДРР общий<b>' + dec(Math.round(drrSp / drrRev * 1000) / 10) + '%</b></span>' : '') +
+      (ordersAll ? '<span>Заказы<b>' + num(ordersAll) + '</b></span>' : '') + (hasCn ? '<span>Ждут тебя<b>' + waitAll + '</b></span>' : '');
+    var t0 = (all[0] || {}).t, fresh = t0 && Date.now() / 60000 - t0 <= 60;
+    var hm = t0 ? ('0' + new Date(t0 * 60000).getHours()).slice(-2) + ':' + ('0' + new Date(t0 * 60000).getMinutes()).slice(-2) : '';
+    list.innerHTML = (fresh ? '' : freshness(t0)) + '<div class="hero" style="margin-bottom:8px">' +
+      '<a href="#" class="th hth" onclick="toggleTheme();return false" aria-label="Сменить тему">☀︎/☾</a>' +
+      '<span class="t">Расход по отчётам · ' + all.length + ' кампаний</span><span class="big">' + num(total) +
+      '<small> сум</small></span><div class="minirow">' + plates + '</div>' +
+      (fresh ? '<span class="nx">данные на ' + hm + ' · <a href="#" class="rf" onclick="return false">обновить</a></span>' : '') + '</div>';
     // REQ-002 uzum-stock-tab: кнопка «Закуп» рядом со списком кампаний, бейдж — позиций к заказу.
     // stock может быть null (сбой остатков внутри state_json — fail-open) или пустым (r/u/n все пустые) — тогда не показываем.
     if (stock && (stock.r.length || stock.u.length || stock.n.length)) {
@@ -485,15 +497,11 @@
         var lbl2 = bad ? 'Дорого' + (bad > 1 ? ' · ' + bad : '') : 'Сливает' + (waste > 1 ? ' · ' + waste : '');
         var paused = c.cs && c.cs[0] !== 'ACTIVE';
         var pill = s === 3 ? ['ДРР ' + dec(d) + '%', 'bad'] : s === 2 ? [lbl2, 'wait'] : s === 1 ? ['Слова · ' + w, 'idle'] : ['Спокойно', 'ok'];
-        if (paused) pill = [c.cs[0] === 'PAUSED' ? 'на паузе' : c.cs[0] === 'LIMIT_REACHED' ? 'бюджет исчерпан' : c.cs[0], 'idle'];
+        // макет v2: пауза — серой строкой, справа ДРР; вторая строка короткая — маржа (если в минус) и органика
+        if (paused && d != null) pill = ['ДРР ' + dec(d) + '%', d <= 5 ? 'ok' : 'bad'];
         var parts = [];
-        if (d != null && pill[0].indexOf('ДРР') !== 0) parts.push('ДРР ' + dec(d) + '%');
+        if (paused) parts.push('⏸ ' + (c.cs[0] === 'PAUSED' ? 'на паузе' : c.cs[0] === 'LIMIT_REACHED' ? 'бюджет исчерпан' : c.cs[0]));
         if (s === 3) parts.push('маржа ' + dec(hd[3]) + '%');
-        if (s === 2) {
-          var lost = (c.k || []).reduce(function (a, x) { return a + (x[4] === 'e' || x[6] ? (x[1] || 0) : 0); }, 0);
-          if (lost) parts.push((bad ? 'дорого на ' : 'слито ') + num(lost) + ' сум');
-        }
-        if (w && s !== 1) parts.push('слов: ' + w);
         if (c.ph && c.ph[2]) parts.push('органика ' + c.ph[2] + '-е');
         // кольцо: путь к целевому ДРР 5% (p = 100, если уже в цели); цвет — ok ≤5%, wait — «Дорого»/нет ДРР, bad >5%
         var pc = d == null ? 0 : d <= 5 ? 100 : Math.round(500 / d);
@@ -519,7 +527,7 @@
     bids = data.s || []; bidOn = {}; growOn = {}; cur = null; flt = 'all';
     rm = data.rm || []; rmOn = {}; rmn = data.rmn || 0;
     tab = items.length ? 'w' : (cards.length ? 'r' : 'b'); seen = false;
-    $('title').textContent = data.dn || data.n || 'Минус-слова';
+    $('title').textContent = data.dn || data.n || 'Минус-слова'; show('title', true);
     show('bar', true);
     if (all.length > 1) {
       if (tg && tg.BackButton && tg.BackButton.show) tg.BackButton.show();
@@ -536,7 +544,7 @@
     show('tabs', false); show('sub', false); show('bar', false);
     if (tg && tg.BackButton && tg.BackButton.show) tg.BackButton.show();
     else $('back').style.display = 'block';
-    $('title').textContent = 'Закуп';
+    $('title').textContent = 'Закуп'; show('title', true);
     renderStock();
     window.scrollTo(0, 0);
   }
