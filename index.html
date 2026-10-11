@@ -234,11 +234,21 @@
   var API_HOSTS = ['https://ulya.dacutavio.ru', 'https://ulya2.dacutavio.ru', 'https://ulya3.dacutavio.ru'];
   var initData = (tg && tg.initData) || '';
   // Тема: внутри Telegram — по colorScheme, вне его (отладка) — по системной.
+  // Ручной выбор темы (кнопка ☀︎/☾ рядом с «Обновить») главнее Telegram; хранится только у этого зрителя.
+  var themePick = null;
+  try { themePick = localStorage.getItem('ulya-theme'); } catch (e) {}
   function theme() {
     var inTg = tg && tg.platform && tg.platform !== 'unknown';
-    var dark = inTg ? tg.colorScheme === 'dark' : !!(window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches);
+    var dark = themePick ? themePick === 'dark'
+      : inTg ? tg.colorScheme === 'dark' : !!(window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches);
     document.documentElement.className = dark ? 'dark' : 'light';
   }
+  function toggleTheme() {
+    themePick = document.documentElement.className === 'dark' ? 'light' : 'dark';
+    try { localStorage.setItem('ulya-theme', themePick); } catch (e) {}
+    theme(); tap();
+  }
+  window.toggleTheme = toggleTheme;      // вызывается из onclick в строке «Данные на …»
   theme();
   if (tg) tg.onEvent('themeChanged', theme);
 
@@ -401,7 +411,7 @@
   // Данные вшиты в ссылку и сами не обновляются: показываем, на какое время они собраны, и предупреждаем о старых.
   // t — минуты эпохи; в старых ссылках его нет — тогда честно говорим, что список из старого сообщения.
   function freshness(t) {
-    var btn = ' <a href="#" class="rf" onclick="return false">↻ Обновить</a>';
+    var btn = ' <a href="#" class="rf" onclick="return false">↻ Обновить</a> <a href="#" class="rf th" onclick="toggleTheme();return false" aria-label="Сменить тему">☀︎/☾</a>';
     if (!t) return '<div class="stale">Список из старого сообщения — ключи и ставки могли измениться.' + btn + '</div>';
     var age = Math.round(Date.now() / 60000 - t), d = new Date(t * 60000);
     var hm = ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2);
