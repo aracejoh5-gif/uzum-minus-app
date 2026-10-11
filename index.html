@@ -210,6 +210,19 @@
   .seg2 div.on em { background:var(--acc); color:#fff; }
   .xrow { background:var(--card); border-radius:18px; padding:10px 14px; display:flex; justify-content:space-between; gap:10px; font-size:13px; font-weight:400; margin-bottom:6px; }
   .xrow span:last-child { color:var(--hint); font-weight:300; white-space:nowrap; }
+  /* стартовый экран: скелет в стиле v2 вместо текста; нижняя панель скрыта до загрузки */
+  .boot { display:grid; gap:8px; }
+  .sk { border-radius:22px; background:var(--card); position:relative; overflow:hidden; }
+  .sk::after { content:""; position:absolute; inset:0; transform:translateX(-100%); background:linear-gradient(90deg,transparent,rgba(255,255,255,.35),transparent); animation:sk 1.4s ease-in-out infinite; }
+  .dark .sk::after { background:linear-gradient(90deg,transparent,rgba(255,255,255,.06),transparent); }
+  @keyframes sk { to { transform:translateX(100%); } }
+  .sk.hero { height:132px; border-radius:30px; background:linear-gradient(135deg,var(--acc-soft),var(--card)); }
+  .sk.row2 { height:58px; }
+  .boot .bt { display:flex; align-items:center; gap:8px; font-size:12px; font-weight:300; color:var(--hint); margin:4px 4px 2px; }
+  .boot .sp { width:14px; height:14px; border-radius:50%; border:2px solid var(--acc-soft); border-top-color:var(--acc); animation:spin .9s linear infinite; }
+  @keyframes spin { to { transform:rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce) { .sk::after, .boot .sp { animation:none; } }
+  .retry { margin-top:14px; border:0; border-radius:999px; padding:11px 22px; font:500 14px inherit; background:var(--acc); color:#fff; }
 </style>
 </head>
 <body>
@@ -1182,12 +1195,14 @@
     if (all.length === 1) open(0); else home();
   }
   function retryScreen(msg) {
-    list.innerHTML = '<div class="empty">' + esc(msg) + '<br><button id="retry" style="margin-top:14px;width:auto;padding:11px 22px;border:0;border-radius:10px;font-weight:600;background:var(--btn);color:var(--btnfg)">Повторить</button></div>';
+    list.innerHTML = '<div class="empty">' + esc(msg) + '<br><button id="retry" class="retry">Повторить</button></div>';
     show('bar', false); show('sub', false);
     $('retry').onclick = startServer;
   }
   function startServer() {
-    list.innerHTML = '<div class="empty">Загружаю свежие данные…<br><span style="font-size:13px">первый раз за день — до 10 секунд</span></div>';
+    $('title').textContent = 'Реклама Uzum'; show('sub', false); show('bar', false);
+    list.innerHTML = '<div class="boot"><div class="bt"><span class="sp"></span>Загружаю свежие данные — первый раз за день до 10 секунд</div>' +
+      '<div class="sk hero"></div><div class="sk row2"></div><div class="sk row2"></div><div class="sk row2"></div><div class="sk row2"></div></div>';
     fetchState().then(function (c) { mode = 'server'; boot(c); }, function (e) {
       load().then(function (c) {   // сервер недоступен — если в ссылке есть данные, тихо уходим в запасной режим
         if (c && c.length) {
