@@ -15,17 +15,18 @@
     --card:rgba(255,255,255,.72); --card-solid:#fff; --fg:#1d1b19; --hint:#8a847d; --line:#e7e3de;
     --acc:#f2762c; --acc-soft:#fde9dc; --ok:#1f9a57; --ok-soft:#e1f4e9; --bad:#d9415f; --bad-soft:#fbe3e8; --wait:#3b6fd8; --wait-soft:#e3ebfb; --idle:#8a847d; --idle-soft:#efece8;
     --btn:var(--acc); --btnfg:#fff; --on-bg:#fff; --on-fg:#1d1b19;
-    --hero:radial-gradient(90% 120% at 0% 100%,#c9824a 0%,transparent 55%),radial-gradient(80% 100% at 100% 0%,#f3d9b8 0%,transparent 60%),linear-gradient(135deg,#e9b98a 0%,#a9b7c4 60%,#7f93a6 100%); --hero-on:#7a4a28; }
+    --hero:radial-gradient(90% 120% at 0% 100%,#9a5524 0%,transparent 55%),radial-gradient(80% 100% at 100% 0%,#a06a40 0%,transparent 60%),linear-gradient(135deg,#a8683a 0%,#7c7f8a 60%,#5d7186 100%); --hero-on:#7a4a28;
+    --minus:#6d6396; --minus-soft:#ebe8f3; }
   :root.dark { --bg:#121214; --page:radial-gradient(110% 55% at 0% 0%,#2a1f17 0%,transparent 60%),linear-gradient(180deg,#141517 0%,#151a20 60%,#1f2935 100%);
     --card:rgba(255,255,255,.06); --card-solid:#1c1c20; --fg:#f2f1ef; --hint:#8d8a86; --line:#2b2b31;
-    --acc:#ff8a3d; --acc-soft:#3a2416; --ok:#3ddc84; --ok-soft:#163223; --bad:#ff5c7a; --bad-soft:#3a1a22; --wait:#7aa7ff; --wait-soft:#1c2740; --idle:#8d8a86; --idle-soft:#2a2a2f;
+    --acc:#ff8a3d; --acc-soft:#3a2416; --ok:#3ddc84; --ok-soft:#163223; --bad:#ff5c7a; --bad-soft:#3a1a22; --wait:#7aa7ff; --wait-soft:#1c2740; --idle:#8d8a86; --idle-soft:#2a2a2f; --minus:#b3a8e0; --minus-soft:#2a2740;
     --on-bg:rgba(255,255,255,.92);
     --hero:radial-gradient(90% 120% at 0% 100%,#a35d2a 0%,transparent 55%),radial-gradient(80% 100% at 100% 0%,#d39a62 0%,transparent 60%),linear-gradient(135deg,#7a4a28 0%,#3c4652 60%,#222a33 100%); }
   /* старые Android WebView Telegram без backdrop-filter: карточки сплошным цветом */
   @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) { :root, :root.light, :root.dark { --card:var(--card-solid); } }
   * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
   html { background:var(--bg); }
-  body { margin:0; font:14px/1.4 var(--f); font-weight:400; font-synthesis:none; background:var(--page) var(--bg); background-attachment:fixed; color:var(--fg); padding:12px 12px 96px; min-height:100vh; }
+  body { margin:0; font:14px/1.4 var(--f); font-weight:400; font-synthesis:none; background:var(--page) var(--bg); background-attachment:fixed; color:var(--fg); padding:12px 12px calc(96px + env(safe-area-inset-bottom,0px)); min-height:100vh; }
   .row, .card, .bid, .camp, .todo, .tile, .advice, .tl, .chips span, #tabs, .back i, #bar { -webkit-backdrop-filter:blur(14px); backdrop-filter:blur(14px); }
   h1 { font-size:20px; font-weight:500; margin:4px 0 2px; }
   .sub { color:var(--hint); font-size:13px; font-weight:300; margin:0 0 12px; }
@@ -125,7 +126,8 @@
   .krow .pill { grid-column:3; }
   .pill { justify-self:end; font-size:10px; font-weight:500; padding:2px 7px; border-radius:999px; white-space:nowrap; }
   .p-ok { background:var(--ok-soft); color:var(--ok); } .p-wait { background:var(--wait-soft); color:var(--wait); }
-  .p-bad { background:var(--bad-soft); color:var(--bad); } .p-idle { background:var(--idle-soft); color:var(--idle); }
+  .p-bad { background:var(--bad-soft); color:var(--bad); } .p-idle { background:var(--idle-soft); color:var(--idle); } .p-minus { background:var(--minus-soft); color:var(--minus); }
+  .hero .off { justify-self:start; background:none; border:0; padding:6px 0 0; flex:none; font:300 11px var(--f); color:#fff; text-decoration:underline; opacity:.9; }
   .kback { display:flex; align-items:center; gap:8px; font-weight:400; font-size:14px; margin:0 0 6px; }
   .kback i { display:inline-grid; place-items:center; width:26px; height:26px; border-radius:50%; background:var(--card); font-style:normal; flex:none; }
   .kback span { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
@@ -708,7 +710,7 @@
   // ---- «Ставки» v2 (11.10): шапка-градиент, плитки, чипы, строки со статусом и трендом, экран ключа.
   // Нужны новые поля сервера: s[11..15], tk, bt, cn. Нет ни одного — renderBids рисует старый вид.
   var cur = null, flt = 'all';   // cur — индекс открытого ключа в bids, flt — фильтр чипов
-  var ST = { ok: ['Удержано', 'ok'], wait: ['Ждёт проверки', 'wait'], bad: ['Откатила', 'bad'], hold: ['Держит', 'idle'], idle: ['Стоит', 'idle'] };
+  var ST = { ok: ['Удержано', 'ok'], wait: ['Ждёт проверки', 'wait'], bad: ['Откатила', 'bad'], hold: ['Держит', 'idle'], idle: ['Стоит', 'idle'], minus: ['Задушен минусом', 'minus'] };
   function newUI() { return !!(data && (data.tk || data.bt || bids.some(function (b) { return b.length > 11; }))); }
   function plural(n, a, b, c) { var m = n % 100, k = n % 10; return (m > 10 && m < 15) ? c : k === 1 ? a : (k > 1 && k < 5) ? b : c; }
   function ageText(m) { return m == null ? '' : m < 60 ? m + ' мин' : Math.round(m / 60) + ' ч'; }
@@ -732,7 +734,7 @@
     }).join('');
     return '<svg class="sp" viewBox="0 0 50 20" aria-hidden="true">' + out + '</svg>';
   }
-  var SPC = { ok: 'var(--ok)', wait: 'var(--wait)', bad: 'var(--bad)' };
+  var SPC = { ok: 'var(--ok)', wait: 'var(--wait)', bad: 'var(--bad)', minus: 'var(--minus)' };
   function heroHtml(tk) {
     var steps = tk.steps || 0, held = tk.held || 0, wait = tk.wait || 0, rolled = tk.rolled || 0;
     var h = '<div class="hero"><span class="t">Авто-режим · ' + (data.pl === 0 ? 'не в пилоте' : data.pl === 1 ? 'пилот' : (data.a ? 'включён' : 'выключен')) + '</span>' +
@@ -742,6 +744,7 @@
     if (tk.ticks && tk.ticks.length)
       h += '<div class="ticks">' + tk.ticks.map(function (t) { return '<span' + (t === tk.next ? ' class="on"' : '') + '>' + esc(t) + '</span>'; }).join('') + '</div>';
     if (tk.next) h += '<span class="nx">следующее решение в ' + esc(tk.next) + '</span>';
+    if (data.a) h += '<button class="off" id="autoOff">выключить авто</button>';
     return h + '</div>';
   }
   function tilesHtml(bt) {
@@ -759,16 +762,18 @@
     d.className = 'krow';
     d.innerHTML = '<span class="k">' + esc(b[0]) + '</span>' + spark(b[14], SPC[st] || 'var(--idle)') +
       '<span class="kb">' + (b[1] ? num(b[1]) : 'выкл') + '</span>' +
-      '<span class="d">место ' + (b[2] >= 99 ? 'нет рекламы' : (b[2] || '—')) + age + '</span>' +
+      '<span class="d">' + (st === 'minus' && b[12] ? esc(b[12]) : 'место ' + (b[2] >= 99 ? 'нет рекламы' : (b[2] || '—')) + age) + '</span>' +
       (st ? '<span class="pill p-' + ST[st][1] + '">' + ST[st][0] + '</span>' : '');
     d.onclick = function () { tap(); cur = i; renderBids(); window.scrollTo(0, 0); };
     return d;
   }
   function renderBidsV2() {
     list.innerHTML = freshness(data.t) + statusBanner();
-    if (data.tk) list.insertAdjacentHTML('beforeend', heroHtml(data.tk));
+    if (data.tk || data.a) list.insertAdjacentHTML('beforeend', heroHtml(data.tk || {}));
+    var ao = $('autoOff'); if (ao) ao.onclick = function () { tap(); send({ auto: false }); };
     if (data.bt) list.insertAdjacentHTML('beforeend', tilesHtml(data.bt));
     var FL = [['all', 'Все'], ['wait', 'Ждёт проверки'], ['bad', 'Откатила'], ['idle', 'Стоит']];
+    if (bids.some(function (b) { return b[11] === 'minus'; })) FL.push(['minus', 'Минус']);
     function inF(b, f) { var st = stateOf(b); return f === 'all' || (f === 'idle' ? st === 'idle' || st === 'hold' : st === f); }
     if (bids.some(function (b) { return stateOf(b); })) {
       var ch = document.createElement('div'); ch.className = 'chips';
@@ -786,7 +791,6 @@
       off.insertAdjacentHTML('afterbegin', '<summary style="font-weight:500;padding:10px 4px;cursor:pointer">Выключенные ключи · ' + off.children.length + '</summary>');
       list.appendChild(off);
     }
-    list.appendChild(autoCard());
     bidsTail();
     bar();
   }
@@ -810,6 +814,7 @@
       }).join('') + '</div>';
     }
     h += '<div class="advice"><span class="l">Совет · ' + BID[code] + '</span><span>' + inf.what + '</span>' +
+      (b[11] === 'minus' && b[12] ? '<span style="font-size:12px;font-weight:300;color:var(--minus)">' + esc(b[12]) + '</span>' : '') +
       (inf.whyText ? '<span style="font-size:12px;font-weight:300;color:var(--hint)">' + esc(inf.whyText) + '</span>' : '') +
       drrLine(b) + (inf.pick ? '<div class="row2"><div class="box"></div><div class="do">Отметить для «Применить»</div></div>' : '') + '</div>';
     list.innerHTML = h;
