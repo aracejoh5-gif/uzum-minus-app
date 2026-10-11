@@ -70,7 +70,7 @@
   .card .badge { display:inline-block; font-size:11px; font-weight:500; color:var(--bad); border:1px solid var(--bad); border-radius:999px; padding:1px 7px; margin-top:4px; }
   .card.grow { border-left-color:var(--ok); }
   .card.grow .do { color:var(--ok); }
-  #pause { background:var(--bad); color:#fff; }
+  #pause { background:var(--card-solid); color:var(--fg); box-shadow:inset 0 0 0 1px var(--line); }
   .bid { background:var(--card); border-radius:22px; padding:12px 14px; margin-bottom:8px; border-left:5px solid var(--line); }
   .bid .top { display:flex; justify-content:space-between; align-items:flex-start; gap:8px; }
   .bid .k { font-weight:500; min-width:0; overflow-wrap:anywhere; }
@@ -146,6 +146,45 @@
   .ev .dot { width:12px; height:12px; border-radius:50%; margin-top:3px; justify-self:center; position:relative; }
   .ev:not(:last-child) .dot::after { content:""; position:absolute; left:5px; top:13px; width:2px; height:34px; background:var(--line); }
   .ev .tx { font-size:12.5px; font-weight:400; overflow-wrap:anywhere; }
+
+  /* ---- главная, рекомендации, слова — стиль v2 ---- */
+  .hero .minirow { display:flex; gap:6px; margin-top:6px; }
+  .hero .minirow span { flex:1; background:rgba(255,255,255,.2); border-radius:14px; padding:6px 8px; font-size:10.5px; font-weight:300; display:grid; }
+  .hero .minirow b { font-size:15px; font-weight:400; }
+  .hero .big small { font-size:14px; font-weight:300; letter-spacing:0; }
+  .hlist { display:grid; gap:6px; }
+  .hrow, .word, .kc { -webkit-backdrop-filter:blur(14px); backdrop-filter:blur(14px); }
+  .hrow { display:grid; grid-template-columns:40px minmax(0,1fr) auto; gap:2px 10px; align-items:center; background:var(--card); border-radius:22px; padding:11px 14px; user-select:none; }
+  .hrow .k { grid-column:2; font-size:13.5px; font-weight:400; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .hrow .v { grid-column:3; font-size:16px; font-weight:300; text-align:right; font-variant-numeric:tabular-nums; }
+  .hrow .d { grid-column:2; font-size:11px; font-weight:300; color:var(--hint); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .hrow .pill { grid-column:3; }
+  .tag { display:inline-block; font-size:10px; font-weight:500; padding:1px 6px; border-radius:999px; background:var(--acc-soft); color:var(--acc); margin-left:4px; vertical-align:1px; }
+  .ord { grid-column:1; grid-row:1 / span 2; width:40px; height:40px; border-radius:50%; display:grid; place-items:center; align-content:center; line-height:1; position:relative; background:conic-gradient(var(--ring) calc(var(--p)*1%), var(--line) 0); }
+  .ord::before { content:""; position:absolute; inset:3px; border-radius:50%; background:var(--card-solid); }
+  .ord b, .ord i { position:relative; font-style:normal; }
+  .ord b { font-size:13px; font-weight:500; }
+  .ord i { font-size:8px; font-weight:300; color:var(--hint); }
+  .sec { font-size:11px; font-weight:400; color:var(--hint); margin:12px 4px 6px; text-transform:none; letter-spacing:0; }
+  .todo2 { background:var(--card); border-radius:24px; padding:12px 14px; display:grid; gap:8px; -webkit-backdrop-filter:blur(14px); backdrop-filter:blur(14px); }
+  .todo2 .it { display:grid; grid-template-columns:22px minmax(0,1fr); gap:8px; align-items:start; font-size:13px; font-weight:500; overflow-wrap:anywhere; }
+  .todo2 .it i { width:22px; height:22px; border-radius:50%; display:grid; place-items:center; font-style:normal; font-size:11px; font-weight:400; background:var(--bad-soft); color:var(--bad); }
+  .todo2 .it i.ok { background:var(--ok-soft); color:var(--ok); }
+  .todo2 .it small { display:block; font-weight:300; color:var(--hint); font-size:11.5px; }
+  .todo2 .more { font-size:12px; font-weight:300; color:var(--hint); }
+  .kc { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:2px 10px; align-items:center; background:var(--card); border-radius:22px; padding:11px 14px; margin-bottom:6px; }
+  .kc .k { font-size:13.5px; font-weight:400; min-width:0; overflow-wrap:anywhere; }
+  .kc .v { font-size:16px; font-weight:300; text-align:right; font-variant-numeric:tabular-nums; }
+  .kc .d { font-size:11px; font-weight:300; color:var(--hint); }
+  .kc .do { grid-column:1 / -1; font-size:12px; font-weight:300; color:var(--hint); margin-top:2px; }
+  .kc .row2 { grid-column:1 / -1; display:flex; align-items:center; gap:10px; margin-top:6px; user-select:none; font-size:12.5px; font-weight:400; }
+  .word { display:grid; grid-template-columns:22px minmax(0,1fr) auto; gap:8px; align-items:center; background:var(--card); border-radius:18px; padding:9px 12px; margin-bottom:6px; user-select:none; }
+  .word.seen { background:transparent; border:1.5px dashed var(--line); margin-top:14px; }
+  .word .w { font-size:13.5px; font-weight:400; min-width:0; overflow-wrap:anywhere; }
+  .word .w small { display:block; font-size:11px; font-weight:300; color:var(--hint); }
+  .word .n { font-size:12px; font-weight:300; color:var(--hint); font-variant-numeric:tabular-nums; white-space:nowrap; }
+  .word .box, .kc .box { flex:0 0 20px; width:20px; height:20px; border-radius:7px; border:1.5px solid var(--hint); background:transparent; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:500; color:#fff; }
+  .word.on .box { background:var(--acc); border-color:var(--acc); }
 </style>
 </head>
 <body>
@@ -360,8 +399,14 @@
     if (tg && tg.BackButton) tg.BackButton.hide();
     show('back', false); show('tabs', false); show('sub', false); show('bar', false);
     var total = all.reduce(function (s, c) { return s + ((c.hd || [])[0] || 0); }, 0);
+    var ordersAll = all.reduce(function (s, c) { return s + ((c.hd || [])[1] || 0); }, 0);
+    var hasCn = all.some(function (c) { return c.cn; });
+    var waitAll = all.reduce(function (s, c) { return s + ((c.cn || {}).minus || 0) + ((c.cn || {}).bids || 0); }, 0);
     $('title').textContent = 'Реклама Uzum';
-    list.innerHTML = freshness((all[0] || {}).t) + '<p class="head">Расход по отчётам <b>' + num(total) + '</b> сум · кампаний ' + all.length + '</p>';
+    var plates = '<span>Кампаний<b>' + all.length + '</b></span>' + (ordersAll ? '<span>Заказы<b>' + num(ordersAll) + '</b></span>' : '') +
+      (hasCn ? '<span>Ждут тебя<b>' + waitAll + '</b></span>' : '');
+    list.innerHTML = freshness((all[0] || {}).t) + '<div class="hero" style="margin-bottom:8px"><span class="t">Расход по отчётам</span><span class="big">' + num(total) +
+      '<small> сум</small></span><div class="minirow">' + plates + '</div></div>';
     // REQ-002 uzum-stock-tab: кнопка «Закуп» рядом со списком кампаний, бейдж — позиций к заказу.
     // stock может быть null (сбой остатков внутри state_json — fail-open) или пустым (r/u/n все пустые) — тогда не показываем.
     if (stock && (stock.r.length || stock.u.length || stock.n.length)) {
@@ -373,6 +418,7 @@
       sb.onclick = function () { tap(); openStock(); };
       list.appendChild(sb);
     }
+    var sec = document.createElement('p'); sec.className = 'sec'; sec.textContent = 'Кампании · сначала, где дороже'; list.appendChild(sec);
     all.map(function (c, i) { return [c, i]; })
       .sort(function (a, b) { return sev(b[0]) - sev(a[0]) || ((b[0].hd || [])[0] || 0) - ((a[0].hd || [])[0] || 0); })
       .forEach(function (p) {
@@ -380,27 +426,29 @@
         var bad = (c.k || []).filter(function (x) { return x[4] === 'e'; }).length;
         var waste = (c.k || []).filter(function (x) { return x[6]; }).length;
         var lbl2 = bad ? 'Дорого' + (bad > 1 ? ' · ' + bad : '') : 'Сливает' + (waste > 1 ? ' · ' + waste : '');
-        var chip = s === 3 ? 'ДРР ' + d + '%' : s === 2 ? lbl2 : s === 1 ? 'Слова · ' + w : 'Спокойно';
-        var nums = hd.length ? num(hd[0]) + ' сум · ' + hd[1] + ' зак' +
-          (d != null && s !== 3 ? ' · ДРР ' + d + '%' : '') + (s === 3 ? ' · маржа ' + hd[3] + '%' : '') : '';
-        // Чип «Дорого» одинаков и для одного ключа на 3 000 сум, и для трёх на 90 000, а решение
-        // «заходить или нет» принимается по деньгам — поэтому они тут же: расход проблемных ключей.
+        var paused = c.cs && c.cs[0] !== 'ACTIVE';
+        var pill = s === 3 ? ['ДРР ' + d + '%', 'bad'] : s === 2 ? [lbl2, 'wait'] : s === 1 ? ['Слова · ' + w, 'idle'] : ['Спокойно', 'ok'];
+        if (paused) pill = [c.cs[0] === 'PAUSED' ? 'на паузе' : c.cs[0] === 'LIMIT_REACHED' ? 'бюджет исчерпан' : c.cs[0], 'idle'];
+        var parts = [];
+        if (d != null && pill[0].indexOf('ДРР') !== 0) parts.push('ДРР ' + d + '%');
+        if (s === 3) parts.push('маржа ' + hd[3] + '%');
         if (s === 2) {
           var lost = (c.k || []).reduce(function (a, x) { return a + (x[4] === 'e' || x[6] ? (x[1] || 0) : 0); }, 0);
-          if (lost) nums += (nums ? ' · ' : '') + (bad ? 'дорого на ' : 'слито ') + num(lost) + ' сум';
+          if (lost) parts.push((bad ? 'дорого на ' : 'слито ') + num(lost) + ' сум');
         }
-        if (w && s !== 1) nums += (nums ? ' · ' : '') + 'слов: ' + w;
-        if (c.ph && c.ph[2]) nums += (nums ? ' · ' : '') + 'органика ' + c.ph[2] + '-е';
-        if (c.a) nums += (nums ? ' · ' : '') + '🤖 авто';
-        // T5 (23.09): статус кампании виден сразу в списке — не только внутри карточки.
-        if (c.cs && c.cs[0] !== 'ACTIVE') nums += (nums ? ' · ' : '') +
-          (c.cs[0] === 'PAUSED' ? '⏸ на паузе' : c.cs[0] === 'LIMIT_REACHED' ? '🚫 бюджет исчерпан' : '⚠️ ' + c.cs[0]);
-        var d = document.createElement('div');
-        d.className = 'camp s' + s;
-        d.innerHTML = '<div class="body"><div class="nm">' + esc(c.dn || c.n || '?') + '</div><div class="n">' + nums + '</div></div>' +
-          '<div class="chip">' + chip + '</div><div class="go">›</div>';
-        d.onclick = function () { tap(); open(p[1]); };
-        list.appendChild(d);
+        if (w && s !== 1) parts.push('слов: ' + w);
+        if (c.ph && c.ph[2]) parts.push('органика ' + c.ph[2] + '-е');
+        // кольцо: путь к целевому ДРР 5% (p = 100, если уже в цели); цвет — ok ≤5%, wait — «Дорого»/нет ДРР, bad >5%
+        var pc = d == null ? 0 : d <= 5 ? 100 : Math.round(500 / d);
+        var ring = d == null ? 'wait' : d > 5 ? 'bad' : bad ? 'wait' : 'ok';
+        var el = document.createElement('div');
+        el.className = 'hrow';
+        el.innerHTML = '<span class="ord" style="--p:' + pc + ';--ring:var(--' + ring + ')"><b>' + (hd[1] || 0) + '</b><i>зак</i></span>' +
+          '<span class="k">' + esc(c.dn || c.n || '?') + (c.a ? '<span class="tag">авто</span>' : '') + '</span>' +
+          '<span class="v">' + (hd.length ? num(hd[0]) : '') + '</span>' +
+          '<span class="d">' + parts.join(' · ') + '</span><span class="pill p-' + pill[1] + '">' + esc(pill[0]) + '</span>';
+        el.onclick = function () { tap(); open(p[1]); };
+        list.appendChild(el);
       });
     window.scrollTo(0, 0);
   }
@@ -497,30 +545,35 @@
       var lim = (hd || [])[3];
       var drrCol = cmp == null ? 'var(--fg)' : (lim != null && cmp > lim) ? 'var(--bad)' : cmp <= 5 ? 'var(--ok)' : '#d9a400';
       var bo = ph && ph[10] != null;
-      var tiles = document.createElement('div'); tiles.className = 'nums';
+      var tiles = document.createElement('div'); tiles.className = 'bento'; tiles.style.marginTop = '0';
       tiles.innerHTML =
-        '<div><b>' + num((hd || [])[0] || 0) + '</b>расход</div>' +
-        (cmp != null ? '<div><b style="color:' + drrCol + '">' + cmp + '%</b>' + (glued ? 'ДРР склейки' : 'ДРР') +
-          '<div style="font-size:11px;margin-top:1px;white-space:nowrap">цель 5' + (lim != null ? ' · маржа ' + String(lim).replace('.', ',') + '%' : '') + '</div></div>' : '') +
-        (bo ? '<div><b>' + ph[10] + '%</b>выкуп' +
-          (ph[11] != null ? '<div style="font-size:10px;margin-top:1px">' + (['по товару', 'по магазину', 'из кабинета'][ph[11]] || '') + '</div>' : '') + '</div>' : '') +
-        (hd && hd[4] != null ? '<div><b' + (hd[5] != null && hd[4] > hd[5] ? ' style="color:var(--bad)"' : '') + '>' + num(hd[4]) + '</b>реклама/заказ' +
-          (hd[5] != null ? '<div style="font-size:10px;margin-top:1px">маржа ' + num(hd[5]) + '</div>' : '') + '</div>' : '');
+        '<div class="tile"><span class="l">Расход</span><span class="v">' + num((hd || [])[0] || 0) + '</span><span class="n">сум за период</span></div>' +
+        (hd && hd[4] != null ? '<div class="tile"><span class="l">Реклама на заказ</span><span class="v"' + (hd[5] != null && hd[4] > hd[5] ? ' style="color:var(--bad)"' : '') + '>' + num(hd[4]) + '</span>' +
+          (hd[5] != null ? '<span class="n">маржа ' + num(hd[5]) + '</span>' : '') + '</div>' : '');
       list.appendChild(tiles);
+      // ДРР и выкуп — строкой под плитками (плитки только расход и заказ)
+      var meta = [];
+      if (cmp != null) meta.push('<b style="font-weight:500;color:' + drrCol + '">' + (glued ? 'ДРР склейки ' : 'ДРР ') + cmp + '%</b> (цель 5' + (lim != null ? ', маржа ' + String(lim).replace('.', ',') + '%' : '') + ')');
+      if (bo) meta.push('выкуп ' + ph[10] + '%' + (ph[11] != null ? ' ' + (['по товару', 'по магазину', 'из кабинета'][ph[11]] || '') : ''));
+      if (meta.length) {
+        var mp = document.createElement('p'); mp.className = 'head'; mp.style.cssText = 'font-size:12px;margin:8px 4px 0';
+        mp.innerHTML = meta.join(' · ');
+        list.appendChild(mp);
+      }
       if (glued && ph[0] != null) {
-        var sub = document.createElement('p'); sub.style.cssText = 'font-size:12px;color:var(--hint);margin:2px 0 8px';
+        var sub = document.createElement('p'); sub.style.cssText = 'font-size:12px;color:var(--hint);margin:2px 4px 8px';
         sub.textContent = 'карточки ' + ph[0] + '%';
         list.appendChild(sub);
       }
       // Органика — одной строкой-чипами (Николай 21.09: убрать воду, не информацию).
       if (ph && ph[2]) {
-        var org = document.createElement('p'); org.className = 'head'; org.style.margin = '0 0 8px';
+        var org = document.createElement('p'); org.className = 'head'; org.style.margin = '8px 4px';
         org.innerHTML = 'лучшее <b>' + ph[2] + '-е</b> · в топ-10: ' + ph[3] + ' из ' + ph[4] +
           (ph[5] ? ' · скрыто рекламой ' + ph[5] : '');
         list.appendChild(org);
       }
       // Разбор формул и точные проценты — по тапу, не с первого экрана.
-      var det = document.createElement('details'); det.style.cssText = 'margin:0 0 12px;font-size:13px;color:var(--hint)';
+      var det = document.createElement('details'); det.style.cssText = 'margin:4px 4px 8px;font-size:13px;color:var(--hint)';
       var raw = ph ? (glued ? ph[13] : ph[12]) : null;
       det.innerHTML = '<summary style="cursor:pointer;font-weight:600">как считается</summary><div style="margin-top:6px;line-height:1.5">' +
         (hd ? 'Расход <b>' + num(hd[0]) + '</b> сум · ' + hd[1] + ' зак. с рекламы<br>' : '') +
@@ -573,60 +626,61 @@
     var acts = [];
     var dr = drr(data);
     if (dr != null && hd && hd[3] != null && dr > hd[3])
-      acts.push([1e12, 'bad', 'Товар в минус: ДРР ' + dr + '% при марже ' + hd[3] + '% — реклама съедает больше маржи']);
+      acts.push([1e12, 'bad', 'Товар в минус: ДРР ' + dr + '%', 'при марже ' + hd[3] + '% — реклама съедает больше маржи']);
     if (hd && hd[4] != null && hd[5] != null && hd[4] > hd[5])
-      acts.push([1e11, 'bad', 'Рекламный заказ дороже маржи: ' + num(hd[4]) + ' сум против ' + num(hd[5]) + ' — снижай ставки по дорогим ключам']);
+      acts.push([1e11, 'bad', 'Снижай ставки по дорогим ключам', 'рекламный заказ дороже маржи: ' + num(hd[4]) + ' сум против ' + num(hd[5])]);
     cards.forEach(function (c) {
-      if (c[4] === 'e') acts.push([c[1], 'bad', 'Снизь ставку «' + esc(c[0]) + '»' + (c[5] ? ' до ~' + num(c[5]) : '')]);
-      else if (c[6]) acts.push([c[1], 'bad', 'Срежь или выключи «' + esc(c[0]) + '» — ' + num(c[1]) + ' сум без заказов']);
+      if (c[4] === 'e') acts.push([c[1], 'bad', 'Снизь ставку «' + esc(c[0]) + '»' + (c[5] ? ' до ~' + num(c[5]) : ''), 'заказ дороже маржи']);
+      else if (c[6]) acts.push([c[1], 'bad', 'Срежь или выключи «' + esc(c[0]) + '»', num(c[1]) + ' сум без заказов']);
     });
-    (data.g || []).forEach(function (g) { acts.push([0, 'ok', 'Выдели ключом «' + esc(g[0]) + '» — ' + g[1] + ' зак']); });
+    (data.g || []).forEach(function (g) { acts.push([0, 'ok', 'Выдели ключом «' + esc(g[0]) + '»', g[1] + ' зак']); });
     acts.sort(function (a, b) { return b[0] - a[0]; });
-    var t = document.createElement('div'); t.className = 'todo';
-    t.innerHTML = '<h3>Что сделать</h3>' + (acts.length
-      ? acts.slice(0, 3).map(function (a) { return '<div class="' + a[1] + '">' + a[2] + '</div>'; }).join('') +
-        (acts.length > 3 ? '<div style="color:var(--hint);font-weight:400">и ещё ' + (acts.length - 3) + ' — в карточках ниже</div>' : '')
-      : '<div class="ok">Ничего — кампания в норме</div>');
+    var sc = document.createElement('p'); sc.className = 'sec'; sc.textContent = 'Что сделать'; list.appendChild(sc);
+    var t = document.createElement('div'); t.className = 'todo2';
+    t.innerHTML = acts.length
+      ? acts.slice(0, 3).map(function (a, n) { return '<div class="it"><i class="' + a[1] + '">' + (n + 1) + '</i><span>' + a[2] + '<small>' + a[3] + '</small></span></div>'; }).join('') +
+        (acts.length > 3 ? '<div class="more">и ещё ' + (acts.length - 3) + ' — в ключах ниже</div>' : '')
+      : '<div class="it"><i class="ok">✓</i><span>Ничего — кампания в норме</span></div>';
     list.appendChild(t);
+    var sk = document.createElement('p'); sk.className = 'sec'; sk.textContent = 'Ключи'; list.appendChild(sk);
     // «Дорого» и «сливает» сверху, дальше строго по деньгам: у Подушки кластер «рано судить» на
     // половину бюджета тонул под десятью мелкими «без заказов» (тест 18.09)
     cards.slice().sort(function (a, b) { return ((a[4] === 'e' || a[6]) ? 0 : 1) - ((b[4] === 'e' || b[6]) ? 0 : 1) || b[1] - a[1]; })
       .forEach(function (c) {
         var v = VERD[c[4]] ? c[4] : 'n', waste = !!c[6], d = document.createElement('div');
-        d.className = 'card v-' + v + (waste ? ' waste' : '');
-        var nums = num(c[1]) + ' сум · ' + c[2] + ' зак' +
-          (c[2] ? ' · ' + num(c[3]) + ' за заказ' + (data.m ? ', маржа ' + num(data.m) : '') : '');
+        d.className = 'kc';
+        var nums = c[2] + ' зак' + (c[2] ? ' · ' + num(c[3]) + ' за заказ' + (data.m ? ', маржа ' + num(data.m) : '') : '');
         var todo = v === 'e' ? (c[5] ? 'Снизь ставку до ~' + num(c[5]) : 'Заказ дороже маржи — снизь ставку') : '';
-        d.innerHTML = '<div class="top"><div class="k">' + esc(c[0]) + '</div><div class="chip">' + VERD[v] + '</div></div>' +
-          (waste ? '<div class="badge">Сливает</div>' : '') +
-          '<div class="n">' + nums + '</div>' +
+        var pc2 = (waste && v !== 'e') ? ['Сливает', 'bad'] : [VERD[v], { e: 'bad', z: 'idle', r: 'idle', n: 'idle', h: 'ok' }[v]];
+        d.innerHTML = '<span class="k">' + esc(c[0]) + '</span><span class="v">' + num(c[1]) + '</span>' +
+          '<span class="d">' + nums + '</span><span class="pill p-' + pc2[1] + '">' + pc2[0] + '</span>' +
           (waste ? '<div class="do">' + num(c[1]) + ' сум без заказов — снизь ставку или выключи ключ в кабинете</div>' : '') +
           (todo ? '<div class="do">' + todo + '</div>' : '');
         list.appendChild(d);
       });
     if (data.kr) { var m = document.createElement('div'); m.className = 'empty'; m.textContent = 'и ещё ' + data.kr + ' мелких кластеров'; list.appendChild(m); }
     if (grow.length) {
-      var gh = document.createElement('h2'); gh.textContent = 'Растить'; list.appendChild(gh);
+      var gh = document.createElement('p'); gh.className = 'sec'; gh.textContent = 'Растить'; list.appendChild(gh);
       // g: [запрос, заказы, клики, кластер-родитель, группа товара (0 — старый сервер, галки нет), ставка родителя, № в пачке]
       // Фраза «завести ключом на минимальной ставке» одинакова у каждой карточки — вынесена
       // один раз сюда (Николай 21.09: повторяющийся текст группы — в заголовок группы).
       var canAny = grow.some(function (g) { return !!g[4] && g[6] != null; });
       if (canAny) {
-        var ghint = document.createElement('p'); ghint.style.cssText = 'font-size:13px;color:var(--hint);margin:-4px 0 8px';
+        var ghint = document.createElement('p'); ghint.style.cssText = 'font-size:12px;font-weight:300;color:var(--hint);margin:-2px 4px 8px';
         ghint.textContent = 'Отметь запрос — заведу отдельным ключом на минимальной ставке 9 500';
         list.appendChild(ghint);
       }
       grow.forEach(function (g) {
         var canAdd = !!g[4] && g[6] != null;
-        var d = document.createElement('div'); d.className = 'card grow';
-        d.innerHTML = '<div class="top"><div class="k">' + esc(g[0]) + '</div></div>' +
-          '<div class="n">' + g[1] + ' зак за 7 дней · ' + g[2] + ' кликов' + (g[3] ? ' · внутри кластера «' + esc(g[3]) + '»' : '') + '</div>' +
+        var d = document.createElement('div'); d.className = 'kc grow';
+        d.innerHTML = '<span class="k">' + esc(g[0]) + '</span>' +
+          '<span class="d" style="grid-column:1 / -1">' + g[1] + ' зак за 7 дней · ' + g[2] + ' кликов' + (g[3] ? ' · внутри кластера «' + esc(g[3]) + '»' : '') + '</span>' +
           (canAdd
-            ? '<div class="row2"><div class="box"></div><div class="do">Завести ключом' + (g[5] ? ' (у «' + esc(g[3]) + '» сейчас ' + num(g[5]) + ')' : '') + '</div></div>'
+            ? '<div class="row2"><div class="box"></div><div>Завести ключом' + (g[5] ? ' (у «' + esc(g[3]) + '» сейчас ' + num(g[5]) + ')' : '') + '</div></div>'
             : '<div class="do">Хорошо продаёт — можно выделить отдельным ключом</div>');
         if (canAdd) {
           var row = d.querySelector('.row2'), box = d.querySelector('.box');
-          var paint = function () { var on = growOn[g[6]]; box.textContent = on ? '✓' : ''; box.style.background = on ? 'var(--ok)' : ''; box.style.borderColor = on ? 'var(--ok)' : ''; box.style.color = '#fff'; };
+          var paint = function () { var on = growOn[g[6]]; box.textContent = on ? '✓' : ''; box.style.background = on ? 'var(--acc)' : ''; box.style.borderColor = on ? 'var(--acc)' : ''; };
           row.onclick = function () { growOn[g[6]] = !growOn[g[6]]; tap(); paint(); paintGrowBtn(); };
           paint();
         }
@@ -937,13 +991,13 @@
     [['c', 'Уверен — сними лишнее'], ['s', 'Сомневаюсь — отметь нужное']].forEach(function (g) {
       var rows = items.map(function (it, i) { return [it, i]; }).filter(function (p) { return p[0].tier === g[0]; });
       if (!rows.length) return;
-      var h = document.createElement('h2'); h.textContent = g[1]; list.appendChild(h);
+      var h = document.createElement('p'); h.className = 'sec'; h.textContent = g[1]; list.appendChild(h);
       rows.forEach(function (p) {
         var it = p[0], d = document.createElement('div');
-        d.className = 'row' + (it.on ? ' on' : '');
+        d.className = 'word' + (it.on ? ' on' : '');
         d.innerHTML = '<div class="box">' + (it.on ? '✓' : '') + '</div>' +
-          '<div style="min-width:0;flex:1"><div class="w">' + esc(it.w) + ' <span class="t">— ' + esc(it.t || '?') + '</span></div>' +
-          '<div class="s">' + it.s + ' пок.' + (it.q ? ' · «' + esc(it.q) + '»' : '') + '</div></div>';
+          '<div class="w">' + esc(it.w) + '<small>' + esc(it.t || '?') + (it.q ? ' · «' + esc(it.q) + '»' : '') + '</small></div>' +
+          '<div class="n">' + it.s + ' пок.</div>';
         d.onclick = function () { it.on = !it.on; tap(); render(); };
         list.appendChild(d);
       });
@@ -952,10 +1006,9 @@
     if (n < items.length) {
       // В конце списка: дошла сюда — значит, всё просмотрела
       var d = document.createElement('div');
-      d.className = 'row seen' + (seen ? ' on' : '');
+      d.className = 'word seen' + (seen ? ' on' : '');
       d.innerHTML = '<div class="box">' + (seen ? '✓' : '') + '</div>' +
-        '<div style="min-width:0;flex:1"><div class="w">Остальные — нормальные</div>' +
-        '<div class="s">больше не показывать, пока показы не вырастут вдвое</div></div>';
+        '<div class="w">Остальные — нормальные<small>больше не показывать, пока показы не вырастут вдвое</small></div><div></div>';
       d.onclick = function () { seen = !seen; tap(); render(); };
       list.appendChild(d);
     }
@@ -965,11 +1018,10 @@
       rm.forEach(function (r, i) {
         var word = r[0], tr = r[1], at = r[2], who = r[3];
         var sub = at ? (at.slice(8, 10) + '.' + at.slice(5, 7) + (who ? ' · ' + esc(who) : '')) : 'руками в кабинете';
-        var d = document.createElement('div'); d.className = 'row' + (rmOn[i] ? ' on' : '');
+        var d = document.createElement('div'); d.className = 'word' + (rmOn[i] ? ' on' : '');
         d.style.marginTop = '8px';
         d.innerHTML = '<div class="box">' + (rmOn[i] ? '✓' : '') + '</div>' +
-          '<div style="min-width:0;flex:1"><div class="w">' + esc(word) + ' <span class="t">— ' + esc(tr || '?') + '</span></div>' +
-          '<div class="s">' + esc(sub) + '</div></div>';
+          '<div class="w">' + esc(word) + '<small>' + esc(tr || '?') + ' · ' + esc(sub) + '</small></div><div></div>';
         d.onclick = function () { rmOn[i] = !rmOn[i]; tap(); render(); };
         rmBox.appendChild(d);
       });
