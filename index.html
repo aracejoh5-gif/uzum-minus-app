@@ -193,6 +193,23 @@
   .word .n { font-size:12px; font-weight:300; color:var(--hint); font-variant-numeric:tabular-nums; white-space:nowrap; }
   .word .box, .kc .box { flex:0 0 20px; width:20px; height:20px; border-radius:7px; border:1.5px solid var(--hint); background:transparent; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:500; color:#fff; }
   .word.on .box { background:var(--acc); border-color:var(--acc); }
+
+  /* сворачиваемые блоки в стиле v2: стеклянная строка и шеврон вместо системного треугольника */
+  details > summary { list-style:none; cursor:pointer; display:flex; align-items:center; justify-content:space-between; gap:8px;
+    background:var(--card); border-radius:18px; padding:10px 14px; font-size:13px; font-weight:400; color:var(--hint); }
+  details > summary::-webkit-details-marker { display:none; }
+  details > summary::marker { content:""; }
+  details > summary::after { content:"›"; font-size:18px; line-height:1; color:var(--hint); transition:transform .2s ease; }
+  details[open] > summary::after { transform:rotate(90deg); }
+  details[open] > summary { margin-bottom:6px; }
+  @media (prefers-reduced-motion: reduce) { details > summary::after { transition:none; } }
+  .seg2 { display:flex; gap:2px; background:var(--card); border-radius:999px; padding:3px; margin:0 0 10px; box-shadow:inset 0 0 0 1px var(--line); }
+  .seg2 div { flex:1; display:flex; align-items:center; justify-content:center; gap:5px; padding:7px 4px; border-radius:999px; font-size:12px; font-weight:400; color:var(--hint); white-space:nowrap; cursor:pointer; }
+  .seg2 div.on { background:var(--on-bg); color:var(--on-fg,#1d1b19); font-weight:500; box-shadow:0 2px 8px rgba(0,0,0,.08); }
+  .seg2 em { font-style:normal; font-size:10px; font-weight:500; min-width:16px; height:16px; padding:0 4px; border-radius:999px; display:inline-grid; place-items:center; background:var(--idle-soft,#efece8); color:var(--fg); }
+  .seg2 div.on em { background:var(--acc); color:#fff; }
+  .xrow { background:var(--card); border-radius:18px; padding:10px 14px; display:flex; justify-content:space-between; gap:10px; font-size:13px; font-weight:400; margin-bottom:6px; }
+  .xrow span:last-child { color:var(--hint); font-weight:300; white-space:nowrap; }
 </style>
 </head>
 <body>
@@ -492,6 +509,7 @@
     window.scrollTo(0, 0);
   }
 
+  var stockSec = 'r';
   function renderStock() {
     var st = stock || { r: [], u: [], n: [], e: 0, pos: 0, pcs: 0, sum: 0, np: [] };
     var html = freshness((all[0] || {}).t);
@@ -502,6 +520,27 @@
       '<div class="tile"><span class="l">Сумма</span><span class="v">' + (st.sum ? (st.sum >= 1e6 ? (st.sum / 1e6).toFixed(1).replace('.', ',') + '<small style="font-size:13px"> млн</small>' : num(st.sum)) : '—') + '</span><span class="n">' + (st.sum ? '≈ сум' : 'нет цены') + '</span></div></div>';
     if (st.np && st.np.length) html += '<p class="n" style="color:var(--hint);margin:-2px 4px 10px">без закупочной цены: ' + st.np.map(esc).join(', ') + '</p>';
     list.innerHTML = html;
+    // Секции «к заказу / не опознано в пути / новые товары» — переключатель-пилюля, как вкладки сверху (11.10).
+    var secs = [['r', 'Товары', st.r.length]];
+    if (st.u && st.u.length) secs.push(['u', 'Не опознано', st.u.length]);
+    if (st.n && st.n.length) secs.push(['n', 'Новые', st.n.length]);
+    if (!secs.some(function (x) { return x[0] === stockSec; })) stockSec = 'r';
+    if (secs.length > 1) {
+      var sg = document.createElement('div'); sg.className = 'seg2';
+      sg.innerHTML = secs.map(function (x) { return '<div data-s="' + x[0] + '"' + (x[0] === stockSec ? ' class="on"' : '') + '>' + x[1] + '<em>' + x[2] + '</em></div>'; }).join('');
+      sg.onclick = function (ev) { var t = ev.target.closest('[data-s]'); if (!t) return; stockSec = t.getAttribute('data-s'); tap(); renderStock(); };
+      list.appendChild(sg);
+    }
+    if (stockSec === 'u') {
+      st.u.forEach(function (u) { var x = document.createElement('div'); x.className = 'xrow'; x.innerHTML = '<span>' + esc(u[0]) + '</span><span>' + num(u[1]) + ' шт</span>'; list.appendChild(x); });
+      var hu = document.createElement('p'); hu.className = 'n'; hu.style.cssText = 'color:var(--hint);margin:6px 4px'; hu.textContent = 'уточни у Кати, к какому цвету'; list.appendChild(hu);
+      window.scrollTo(0, 0); return;
+    }
+    if (stockSec === 'n') {
+      st.n.forEach(function (n) { var x = document.createElement('div'); x.className = 'xrow'; x.innerHTML = '<span>' + esc(n) + '</span><span>новый</span>'; list.appendChild(x); });
+      var hn = document.createElement('p'); hn.className = 'n'; hn.style.cssText = 'color:var(--hint);margin:6px 4px'; hn.textContent = 'скорость посчитаю с первых продаж'; list.appendChild(hn);
+      window.scrollTo(0, 0); return;
+    }
     if (!st.r.length) {
       var e = document.createElement('div'); e.className = 'empty'; e.textContent = 'Остатки в норме — заказывать пока нечего.';
       list.appendChild(e);
@@ -522,21 +561,6 @@
         '<div class="d2">хватит на ' + days + ' дн.' + (left != null ? ' · к приходу ' + (left < 0 ? '<b class="neg">' + left + '</b>' : left) + ' дн.' : '') + '</div>';
       list.appendChild(d);
     });
-    // REQ-004: два свёрнутых блока внизу, пустой не рисуем.
-    if (st.u && st.u.length) {
-      var det = document.createElement('details'); det.style.cssText = 'margin:14px 0 0;font-size:13px;color:var(--hint)';
-      det.innerHTML = '<summary style="cursor:pointer;font-weight:600">не опознано в пути (' + st.u.length + ')</summary>' +
-        '<div style="margin-top:6px;line-height:1.6">' + st.u.map(function (u) { return esc(u[0]) + ' — ' + num(u[1]) + ' шт'; }).join('<br>') +
-        '<div style="margin-top:8px">уточни у Кати, к какому цвету</div></div>';
-      list.appendChild(det);
-    }
-    if (st.n && st.n.length) {
-      var det2 = document.createElement('details'); det2.style.cssText = 'margin:10px 0 0;font-size:13px;color:var(--hint)';
-      det2.innerHTML = '<summary style="cursor:pointer;font-weight:600">новые товары (' + st.n.length + ')</summary>' +
-        '<div style="margin-top:6px;line-height:1.6">' + st.n.map(esc).join('<br>') +
-        '<div style="margin-top:8px">скорость посчитаю с первых продаж</div></div>';
-      list.appendChild(det2);
-    }
     window.scrollTo(0, 0);
   }
 
