@@ -928,6 +928,16 @@
       off.insertAdjacentHTML('afterbegin', '<summary style="font-weight:500;padding:10px 4px;cursor:pointer">Выключенные ключи · ' + off.children.length + '</summary>');
       list.appendChild(off);
     }
+    // 19.10 (REQ-025): запросы, где стоят конкуренты, а у нас ключа нет — только совет, ключ заводит человек
+    if (data.rk && data.rk.length) {
+      var rk = document.createElement('details'); rk.style.cssText = 'margin:10px 0';
+      rk.innerHTML = '<summary style="font-weight:500;padding:10px 4px;cursor:pointer">Ключи конкурентов · ' + data.rk.length + '</summary>' +
+        data.rk.map(function (r) {
+          return '<div class="kc"><div><div style="font-weight:500">' + esc(r[0]) + '</div><div style="font-size:12px;color:var(--hint)">конкурентов в топ-20: ' +
+            r[1] + ' · ~' + num(r[2]) + ' показов/день</div></div><div style="font-size:13px;color:var(--hint)">лучшее ' + r[3] + '-е</div></div>';
+        }).join('') + '<div style="font-size:12px;color:var(--hint);padding:4px">У нас такого ключа нет. Завести — в кабинете или «вернуть ключ …» в чате.</div>';
+      list.appendChild(rk);
+    }
     bidsTail();
     bar();
   }
