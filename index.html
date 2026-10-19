@@ -252,6 +252,7 @@
   <button id="pause" style="display:none">⏸ Пауза</button>
 </div>
 <script>
+  var MIN_BID = 9500;   // минимальная ставка Uzum (Николай 19.10)
 (function () {
   var tg = window.Telegram && Telegram.WebApp;
   if (tg) { tg.ready(); tg.expand(); }
@@ -707,7 +708,9 @@
     if (hd && hd[4] != null && hd[5] != null && hd[4] > hd[5])
       acts.push([1e11, 'bad', 'Снижай ставки по дорогим ключам', 'рекламный заказ дороже маржи: ' + num(hd[4]) + ' сум против ' + num(hd[5])]);
     cards.forEach(function (c) {
-      if (c[4] === 'e') acts.push([c[1], 'bad', 'Снизь ставку «' + esc(c[0]) + '»' + (c[5] ? ' до ~' + num(c[5]) : ''), 'заказ дороже маржи']);
+      // 19.10 (Николай): ставку ниже 9 500 Uzum не даёт — окупаемая ставка ниже минимума значит «выключи ключ», а не «снизь до 6 000»
+      if (c[4] === 'e') acts.push([c[1], 'bad', (c[5] && c[5] < MIN_BID ? 'Выключи ключ «' + esc(c[0]) + '»' : 'Снизь ставку «' + esc(c[0]) + '»' + (c[5] ? ' до ~' + num(c[5]) : '')),
+        c[5] && c[5] < MIN_BID ? 'даже на минимуме 9 500 заказ дороже маржи' : 'заказ дороже маржи']);
       else if (c[6]) acts.push([c[1], 'bad', 'Срежь или выключи «' + esc(c[0]) + '»', num(c[1]) + ' сум без заказов']);
     });
     (data.g || []).forEach(function (g) { acts.push([0, 'ok', 'Выдели ключом «' + esc(g[0]) + '»', g[1] + ' зак']); });
@@ -727,7 +730,8 @@
         var v = VERD[c[4]] ? c[4] : 'n', waste = !!c[6], d = document.createElement('div');
         d.className = 'kc';
         var nums = c[2] + ' зак' + (c[2] ? ' · ' + num(c[3]) + ' за заказ' + (data.m ? ', маржа ' + num(data.m) : '') : '');
-        var todo = v === 'e' ? (c[5] ? 'Снизь ставку до ~' + num(c[5]) : 'Заказ дороже маржи — снизь ставку') : '';
+        var todo = v === 'e' ? (c[5] && c[5] < MIN_BID ? 'Даже на минимуме 9 500 заказ дороже маржи — выключи ключ'
+                                : c[5] ? 'Снизь ставку до ~' + num(c[5]) : 'Заказ дороже маржи — снизь ставку') : '';
         var pc2 = (waste && v !== 'e') ? ['Сливает', 'bad'] : [VERD[v], { e: 'bad', z: 'idle', r: 'idle', n: 'idle', h: 'ok' }[v]];
         d.innerHTML = '<span class="k">' + esc(c[0]) + '</span><span class="v">' + num(c[1]) + '</span>' +
           '<span class="d">' + nums + '</span><span class="pill p-' + pc2[1] + '">' + pc2[0] + '</span>' +
