@@ -992,12 +992,23 @@
       (b[11] === 'minus' && b[12] ? '<span style="font-size:12px;font-weight:300;color:var(--minus)">' + esc(b[12]) + '</span>' : '') +
       (inf.whyText ? '<span style="font-size:12px;font-weight:300;color:var(--hint)">' + esc(inf.whyText) + '</span>' : '') +
       drrLine(b) + (inf.pick ? '<div class="row2"><div class="box"></div><div class="do">Отметить для «Применить»</div></div>' : '') + '</div>';
+    // 20.10 (Вика): ключ задушен своим минусом — снять минус здесь же (тот же путь, что «Убрано» на вкладке «Слова»)
+    if (b[11] === 'minus' && b[16] && b[16].length) {
+      h += '<div class="advice"><span class="l">Задушен минусом</span><span>' + b[16].map(function (w) { return '«' + esc(w) + '»'; }).join(', ') +
+        '</span><button id="unmw" style="margin-top:8px;padding:10px;border:0;border-radius:999px;background:var(--ok);color:#fff;font:500 14px var(--f)">Снять минус</button></div>';
+    }
     // 18.10 (REQ-019): зона места ключа — выше зоны Уля снижает ставку, в зоне держит; по умолчанию 2–5
     var zc = ((data.zn || {})[b[8]]) || '2-5';
     h += '<div class="advice"><span class="l">Держать место</span><div class="zseg">' + ['2-5', '6-10', '11-15'].map(function (z) {
       return '<span data-z="' + z + '"' + (z === zc ? ' class="on"' : '') + '>' + z.replace('-', '–') + '</span>';
     }).join('') + '</div><span style="font-size:12px;font-weight:300;color:var(--hint)">выше зоны — снижаю ставку, в зоне — держу</span></div>';
     list.innerHTML = h;
+    var um = $('unmw');
+    if (um) um.onclick = function () {
+      var ws = b[16], ask = 'Снять минус ' + ws.map(function (w) { return '«' + w + '»'; }).join(', ') + ' во всей кампании?';
+      var go = function (ok) { if (ok) { tap(); send({ unminus: ws }); } };
+      if (tg && tg.showConfirm) tg.showConfirm(ask, go); else go(window.confirm(ask));
+    };
     [].forEach.call(list.querySelectorAll('.zseg span'), function (el) {
       el.onclick = function () {
         var z = el.getAttribute('data-z'); if (z === zc) return;
