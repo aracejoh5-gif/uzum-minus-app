@@ -120,6 +120,7 @@
   .tile .n { font-size:10px; font-weight:300; color:var(--hint); }
   .chips { display:flex; gap:6px; overflow-x:auto; margin:12px 0 8px; padding-bottom:2px; scrollbar-width:none; }
   .chips::-webkit-scrollbar { display:none; }
+  .rkb { display:flex; gap:8px; } .rkb span { cursor:pointer; padding:6px 10px; border-radius:999px; box-shadow:0 0 0 1px var(--line); font-size:13px; }
   .zseg { display:flex; gap:6px; margin:6px 0 2px; }
   .zseg span { flex:1; text-align:center; font-size:14px; padding:8px 0; border-radius:999px; background:var(--bg); color:var(--fg); box-shadow:0 0 0 1px var(--line); cursor:pointer; }
   .zseg span.on { background:var(--ok); color:#fff; box-shadow:none; }
@@ -252,6 +253,7 @@
   <button id="pause" style="display:none">⏸ Пауза</button>
 </div>
 <script>
+  var rkOpen = false;   // блок «Ключи конкурентов» остаётся раскрытым после ➕/✕
   var MIN_BID = 9500;   // минимальная ставка Uzum (Николай 19.10)
 (function () {
   var tg = window.Telegram && Telegram.WebApp;
@@ -928,14 +930,40 @@
       off.insertAdjacentHTML('afterbegin', '<summary style="font-weight:500;padding:10px 4px;cursor:pointer">Выключенные ключи · ' + off.children.length + '</summary>');
       list.appendChild(off);
     }
-    // 19.10 (REQ-025): запросы, где стоят конкуренты, а у нас ключа нет — только совет, ключ заводит человек
-    if (data.rk && data.rk.length) {
+    // 19.10 (REQ-025): запросы, где стоят конкуренты, а у нас ключа нет. 20.10 (Вика): после своей проверки выдачи —
+    // «➕» просит добавить ключ (подтверждение кнопкой в чате), «✕» убирает запрос из советов кампании (можно вернуть ниже)
+    if ((data.rk && data.rk.length) || (data.rkx && data.rkx.length)) {
       var rk = document.createElement('details'); rk.style.cssText = 'margin:10px 0';
-      rk.innerHTML = '<summary style="font-weight:500;padding:10px 4px;cursor:pointer">Ключи конкурентов · ' + data.rk.length + '</summary>' +
-        data.rk.map(function (r) {
-          return '<div class="kc"><div><div style="font-weight:500">' + esc(r[0]) + '</div><div style="font-size:12px;color:var(--hint)">конкурентов в топ-20: ' +
-            r[1] + ' · ~' + num(r[2]) + ' показов/день</div></div><div style="font-size:13px;color:var(--hint)">лучшее ' + r[3] + '-е</div></div>';
-        }).join('') + '<div style="font-size:12px;color:var(--hint);padding:4px">У нас такого ключа нет. Завести — в кабинете или «вернуть ключ …» в чате.</div>';
+      var rows = (data.rk || []).map(function (r, i) {
+        return '<div class="kc"><div><div style="font-weight:500">' + esc(r[0]) + '</div><div style="font-size:12px;color:var(--hint)">конкурентов в топ-20: ' +
+          r[1] + ' · ~' + num(r[2]) + ' показов/день · лучшее ' + r[3] + '-е</div></div><div class="rkb">' +
+          '<span data-rka="' + i + '" title="Добавить ключ">➕</span><span data-rkd="' + i + '" title="Не подходит">✕</span></div></div>';
+      }).join('');
+      var back = (data.rkx || []).map(function (q, i) {
+        return '<div class="kc" style="opacity:.6"><div>' + esc(q) + '</div><div class="rkb"><span data-rkb="' + i + '">вернуть</span></div></div>';
+      }).join('');
+      rk.innerHTML = '<summary style="font-weight:500;padding:10px 4px;cursor:pointer">Ключи конкурентов · ' + (data.rk || []).length + '</summary>' + rows +
+        '<div style="font-size:12px;color:var(--hint);padding:4px">У нас такого ключа нет. ➕ — добавить (подтвердишь в чате), ✕ — не подходит.</div>' +
+        (back ? '<details style="margin-top:6px"><summary style="font-size:13px;color:var(--hint);cursor:pointer">Убранные · ' + data.rkx.length + '</summary>' + back + '</details>' : '');
+      if (rkOpen) rk.open = true;
+      rk.ontoggle = function () { rkOpen = rk.open; };
+      [].forEach.call(rk.querySelectorAll('[data-rka]'), function (el) {
+        el.onclick = function () { tap(); send({ rk_add: data.rk[+el.getAttribute('data-rka')][0] }); };
+      });
+      [].forEach.call(rk.querySelectorAll('[data-rkd]'), function (el) {
+        el.onclick = function () {
+          tap(); var q = data.rk[+el.getAttribute('data-rkd')][0];
+          data.rk = data.rk.filter(function (r) { return r[0] !== q; }); data.rkx = [q].concat(data.rkx || []);
+          send({ rk_dismiss: q }); renderBids();
+        };
+      });
+      [].forEach.call(rk.querySelectorAll('[data-rkb]'), function (el) {
+        el.onclick = function () {
+          tap(); var q = data.rkx[+el.getAttribute('data-rkb')];
+          data.rkx = data.rkx.filter(function (x) { return x !== q; });
+          send({ rk_back: q }); renderBids();
+        };
+      });
       list.appendChild(rk);
     }
     bidsTail();
