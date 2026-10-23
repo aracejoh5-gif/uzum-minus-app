@@ -1234,7 +1234,12 @@
                                               : 'Слишком часто — подожди минуту.', 'err');
         afterSend(o, false); return;
       }
-      if (!res.r.ok || j.ok === false) { toast(safeHtml(j.error || 'Сервер не ответил, попробуй ещё раз.'), 'err'); afterSend(o, false); return; }
+      if (!res.r.ok || j.ok === false) {
+        var stale = /Уже применено|Список устарел/.test(j.error || '');
+        // 23.10 (Вика): список старый — запись уже прошла через чат. Не держим его на экране, сразу берём свежий
+        toast(safeHtml(stale ? 'Это уже записано — обновляю список…' : (j.error || 'Сервер не ответил, попробуй ещё раз.')), stale ? 'ok' : 'err');
+        afterSend(o, false); if (stale) refreshInPlace(); return;
+      }
       var html = j.text ? safeHtml(j.text) : 'Готово.';
       if (j.chat) html += '<br>→ подтверди кнопкой в чате с Улей' + (tg && tg.close ? ' <button id="toChat">Перейти в чат</button>' : '');
       toast(html, 'ok');
