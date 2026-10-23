@@ -377,7 +377,8 @@
   // срезаются из РФ после ~16 КБ, GitHub грузится всегда. Сервер отдаёт маленькую ссылку+ключ (/api/state_ref),
   // само тело — зашифрованный файл с GitHub. Любой сбой на пути (а)-(в) → тихо назад на старый /api/state.
   function fetchRef(fresh) {
-    var ctl = new AbortController(), timer = setTimeout(function () { ctl.abort(); }, 20000);
+    // 60 с, не 20: после записи сервер собирает список заново 18–26 с (23.10) — на 20 с приложение уходило на запасной экран с 5 словами
+    var ctl = new AbortController(), timer = setTimeout(function () { ctl.abort(); }, 60000);
     var url = API + '/api/state_ref' + (fresh ? '?fresh=1' : '');
     return fetch(url, { headers: { 'X-Tg-Init-Data': initData }, signal: ctl.signal })
       .then(function (r) {
