@@ -691,7 +691,7 @@
         (rp.promo ? '<div class="do" style="margin-top:6px;font-weight:400;color:#d9a400">' + esc(rp.promo) + '</div>' : '') +
         (rp.next ? '<div class="do" style="margin-top:6px;font-weight:400;color:var(--hint)">Решение ' + esc(rp.next) + '</div>' : '') +
         '<details style="margin-top:6px;font-size:13px;color:var(--hint)"><summary style="cursor:pointer;font-weight:600">как работает</summary>' +
-        '<div style="margin-top:4px;line-height:1.5">+1%, потом 2 дня смотрю заказы и на третий день — следующий шаг. Упали продажи больше чем на 30% — верну цену, остановлюсь и позову Вику. Потолок +20%. В акции Uzum цену менять нельзя — жду конца акции и трёх дней без неё</div></details>';
+        '<div style="margin-top:4px;line-height:1.5">+1%, потом 2 дня смотрю заказы и на третий день — следующий шаг. Упали заказы больше чем на 30% — остановлюсь и спрошу Вику, вернуть ли цену (с заказами по дням недели). Потолок +20%. В акции Uzum цену менять нельзя — жду конца акции и трёх дней без неё</div></details>';
       if (rp.st !== 'na' && rp.st !== 'busy') {
         var rpBtn = document.createElement('button');
         rpBtn.style.cssText = 'margin-top:10px;width:100%;padding:11px;border:0;border-radius:10px;font-weight:600;font-size:15px;background:' +
